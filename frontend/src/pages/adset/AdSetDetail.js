@@ -6,7 +6,7 @@ import { StatusPill } from '@/components/StatusPill';
 import { MediaPreview } from '@/components/MediaPreview';
 import { ArrowLeft, Send, ExternalLink, MessageSquare, Loader2, PlayCircle, BarChart3, FileText, Plus, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { AdFormFields, emptyAd, adError, serializeAd, adToForm } from '@/components/AdForm';
+import { AdFormFields, emptyAd, adError, serializeAd, adToForm, adFromCommonCopy } from '@/components/AdForm';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -178,7 +178,7 @@ export default function AdSetDetail() {
             {canAddAd && (
               <button
                 data-testid="adset-add-ad-button"
-                onClick={() => { setNewAd(emptyAd()); setAddOpen(true); }}
+                onClick={() => { setNewAd(adFromCommonCopy(ad_set.common_copy)); setAddOpen(true); }}
                 title="Add another ad to this ad set"
                 className="w-full h-[72px] rounded-lg border border-dashed border-[color:var(--stroke)] hover:border-[color:var(--brand-teal)]/60 hover:bg-[color:var(--brand-teal)]/5 text-[color:var(--text-3)] hover:text-[color:var(--brand-teal)] inline-flex flex-col items-center justify-center gap-1 transition-colors"
               >
@@ -244,6 +244,7 @@ export default function AdSetDetail() {
           <DialogHeader className="shrink-0 pb-4">
             <DialogTitle style={{ fontFamily: 'var(--font-display)' }}>Add ad to {ad_set.name}</DialogTitle>
             <div className="text-xs text-[color:var(--text-3)]">
+              {ad_set.common_copy && <span className="text-[color:var(--brand-teal)]">Ad copy prefilled from “{ad_set.common_copy.ad_name}”. </span>}
               {ad_set.type === 'media_ready' ? 'Media ready' : 'Script only'} · {setAlreadySubmitted
                 ? 'This set is already in review — you can save the ad as a draft or send it for review now.'
                 : 'It will be submitted along with the rest of the set.'}

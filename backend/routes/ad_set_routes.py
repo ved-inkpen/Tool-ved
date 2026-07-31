@@ -66,6 +66,12 @@ async def create_ad_set(payload: AdSetCreate, user: dict = Depends(require_roles
         for ad_input in payload.ads
     ]
 
+    # last ad flagged as common wins — the UI only ever lets one be ticked
+    common_ad_id = next(
+        (doc['id'] for doc, inp in reversed(list(zip(ad_docs, payload.ads))) if inp.common_copy),
+        None,
+    )
+
     ad_set_doc = {
         'id': ad_set_id,
         'ad_set_code': ad_set_code,
@@ -75,6 +81,7 @@ async def create_ad_set(payload: AdSetCreate, user: dict = Depends(require_roles
         'created_by': user['id'],
         'created_by_name': user.get('name'),
         'assigned_agency_id': None,
+        'common_copy_ad_id': common_ad_id,
         'created_at': now,
         'updated_at': now,
     }
@@ -158,7 +165,10 @@ async def add_ad_to_set(ad_set_id: str, payload: AdInput, submit: bool = False, 
     # agency lives on the set, so a late addition joins whichever agency it already has
     ad_doc['assigned_agency_id'] = ad_set.get('assigned_agency_id')
     await ads_col.insert_one(ad_doc)
-    await ad_sets_col.update_one({'id': ad_set_id}, {'$set': {'updated_at': now}})
+    set_update = {'updated_at': now}
+    if payload.common_copy:
+        set_update['common_copy_ad_id'] = ad_doc['id']
+    await ad_sets_col.update_one({'id': ad_set_id}, {'$set': set_update})
 
     if status == 'pending_script_review':
         await notify_role('script_reviewer', 'New script to review', f"Ad '{ad_doc['name']}' was added to Ad Set {ad_set['ad_set_code']}", f"/script-review/{ad_set_id}")
@@ -260,6 +270,25 @@ async def get_ad_set(ad_set_id: str, user: dict = Depends(get_current_user)):
         ag = await agencies_col.find_one({'id': ad_set['assigned_agency_id']}, {'_id': 0})
         agency_name = ag['name'] if ag else None
     ad_set['assigned_agency_name'] = agency_name
+    # resolve the set's common copy so new ads can be seeded from it
+    common = None
+    src_id = ad_set.get('common_copy_ad_id')
+    if src_id:
+        src = next((a for a in ads if a['id'] == src_id), None)
+        if src is None:
+            src = normalize_ad(await ads_col.find_one({'id': src_id}, {'_id': 0}))
+        if src:
+            common = {
+                'ad_id': src['id'],
+                'ad_name': src.get('name'),
+                'headlines': src.get('headlines') or [],
+                'primary_texts': src.get('primary_texts') or [],
+            }
+        else:
+            # source ad was deleted — drop the dangling pointer
+            await ad_sets_col.update_one({'id': ad_set_id}, {'$set': {'common_copy_ad_id': None}})
+            ad_set['common_copy_ad_id'] = None
+    ad_set['common_copy'] = common
     return {'ad_set': ad_set, 'ads': ads}
 
 

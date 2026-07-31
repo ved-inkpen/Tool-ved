@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { PageHeader } from '@/components/Shared';
-import { AdFormFields, emptyAd, filled, adError, serializeAd } from '@/components/AdForm';
+import { AdFormFields, emptyAd, filled, adError, serializeAd, adFromCommonCopy } from '@/components/AdForm';
 import { Plus, Trash2, Loader2, FileText, Zap, ArrowLeft, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,7 +15,11 @@ export default function CreateAdSet() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const setAd = (idx, next) => setAds((prev) => prev.map((a, i) => (i === idx ? next : a)));
+  /** Only one ad can be the set's common copy, so ticking one unticks the rest. */
+  const setAd = (idx, next) => setAds((prev) => prev.map((a, i) => {
+    if (i === idx) return next;
+    return next.common_copy && a.common_copy ? { ...a, common_copy: false } : a;
+  }));
   const removeAd = (idx) => {
     setAds((prev) => prev.filter((_, i) => i !== idx));
     setActiveIdx((prev) => (prev >= idx && prev > 0 ? prev - 1 : prev));
@@ -27,8 +31,14 @@ export default function CreateAdSet() {
   const addAd = () => {
     const err = errorFor(ads[activeIdx], activeIdx);
     if (err) { toast.error(`${err} before adding another`); return; }
-    setAds((prev) => [...prev, emptyAd()]);
+    // seed from whichever ad is marked common, if any
+    const source = ads.find(a => a.common_copy);
+    const next = source
+      ? adFromCommonCopy({ headlines: filled(source.headlines), primary_texts: filled(source.primary_texts) })
+      : emptyAd();
+    setAds((prev) => [...prev, next]);
     setActiveIdx(ads.length);
+    if (source) toast.success('Ad copy prefilled from the common ad');
   };
 
   const submit = async (asDraft) => {
@@ -122,6 +132,9 @@ export default function CreateAdSet() {
                         : <span className="shrink-0 h-3.5 w-3.5 rounded-full border border-[color:var(--text-3)]" />}
                       <span className="text-xs text-[color:var(--text-3)] shrink-0" style={{ fontFamily: 'var(--font-mono)' }}>Ad #{idx + 1}</span>
                       <span className="text-sm truncate">{ad.name || <span className="text-[color:var(--text-3)]">Untitled ad</span>}</span>
+                      {ad.common_copy && (
+                        <span className="text-[10px] shrink-0 px-1.5 py-0.5 rounded bg-[color:var(--brand-teal)]/15 text-[color:var(--brand-teal)]">common copy</span>
+                      )}
                       <span className="text-[11px] text-[color:var(--text-3)] shrink-0 ml-auto tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
                         {filled(ad.headlines).length}H · {filled(ad.primary_texts).length}P
                       </span>

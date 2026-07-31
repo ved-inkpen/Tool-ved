@@ -1,5 +1,6 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { FileUpload } from '@/components/FileUpload';
 
 export const MAX_COPY_VARIANTS = 5;
@@ -14,6 +15,18 @@ export function emptyAd() {
     media_file: null,
     headlines: [''],
     primary_texts: [''],
+    common_copy: false,
+  };
+}
+
+/** Seed a new ad with the set's shared copy, when one has been marked common. */
+export function adFromCommonCopy(common) {
+  const base = emptyAd();
+  if (!common) return base;
+  return {
+    ...base,
+    headlines: common.headlines?.length ? [...common.headlines] : [''],
+    primary_texts: common.primary_texts?.length ? [...common.primary_texts] : [''],
   };
 }
 
@@ -37,6 +50,7 @@ export function adToForm(ad) {
     media_file: ad.media_file || null,
     headlines: list(ad.headlines, ad.headline),
     primary_texts: list(ad.primary_texts, ad.primary_text),
+    common_copy: !!ad.common_copy,
   };
 }
 
@@ -56,7 +70,17 @@ export function serializeAd(ad) {
     reference_links: filled(ad.reference_links),
     headlines: filled(ad.headlines).slice(0, MAX_COPY_VARIANTS),
     primary_texts: filled(ad.primary_texts).slice(0, MAX_COPY_VARIANTS),
+    common_copy: !!ad.common_copy,
   };
+}
+
+async function copyToClipboard(text, label) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`${label} copied`);
+  } catch (e) {
+    toast.error('Copy failed');
+  }
 }
 
 /** Up to MAX_COPY_VARIANTS text inputs for one copy field (headlines / primary texts). */
@@ -65,6 +89,7 @@ export function CopyVariantList({ label, hint, values, onChange, testId, multili
   const add = () => onChange([...values, '']);
   const remove = (i) => onChange(values.length === 1 ? [''] : values.filter((_, xi) => xi !== i));
   const atMax = values.length >= MAX_COPY_VARIANTS;
+  const singular = label.replace(/s$/, '');
 
   return (
     <div>
@@ -101,6 +126,17 @@ export function CopyVariantList({ label, hint, values, onChange, testId, multili
                 placeholder={`Headline variant ${i + 1}`}
               />
             )}
+            <button
+              type="button"
+              data-testid={`${testId}-copy-${i}`}
+              onClick={() => copyToClipboard(v, `${singular} ${i + 1}`)}
+              disabled={!v || !v.trim()}
+              aria-label={`Copy ${singular} ${i + 1}`}
+              title="Copy to clipboard"
+              className="mt-0.5 h-9 w-9 shrink-0 grid place-items-center rounded-lg hover:bg-white/5 text-[color:var(--text-3)] hover:text-[color:var(--text-1)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Copy size={14} />
+            </button>
             <button
               type="button"
               data-testid={`${testId}-remove-${i}`}
@@ -183,7 +219,22 @@ export function AdFormFields({ ad, type, idx, onChange }) {
 
       {/* Ad copy closes out the form — up to 5 variants of each */}
       <div className="pt-2 mt-1 border-t border-[color:var(--stroke)] space-y-5">
-        <div className="text-[10px] uppercase tracking-widest text-[color:var(--text-3)] pt-3" style={{ fontFamily: 'var(--font-mono)' }}>Ad copy</div>
+        <div className="flex items-start justify-between gap-4 flex-wrap pt-3">
+          <div className="text-[10px] uppercase tracking-widest text-[color:var(--text-3)]" style={{ fontFamily: 'var(--font-mono)' }}>Ad copy</div>
+          <label className="flex items-start gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              data-testid={`ad-common-copy-${idx}`}
+              checked={!!ad.common_copy}
+              onChange={(e) => set('common_copy', e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[color:var(--brand-teal)] cursor-pointer"
+            />
+            <span className="text-xs text-[color:var(--text-2)] group-hover:text-[color:var(--text-1)] transition-colors">
+              Make this common for all ads in this ad set
+              <span className="block text-[11px] text-[color:var(--text-3)]">New ads start with this copy, still editable.</span>
+            </span>
+          </label>
+        </div>
         <CopyVariantList
           label="Headlines"
           hint={`Up to ${MAX_COPY_VARIANTS} headline variants to test against each other.`}

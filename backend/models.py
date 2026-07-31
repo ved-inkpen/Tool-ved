@@ -121,6 +121,8 @@ class AdInput(BaseModel):
     media_file: Optional[FileRef] = None  # for media_ready path
     headlines: List[str] = Field(default_factory=list, max_length=5)
     primary_texts: List[str] = Field(default_factory=list, max_length=5)
+    # mark this ad's copy as the set's default, prefilled into ads added later
+    common_copy: bool = False
     # legacy single fields (backward compat)
     headline: Optional[str] = ''
     primary_text: Optional[str] = ''
@@ -172,6 +174,8 @@ class AdSet(BaseModel):
     created_by: str
     created_by_name: Optional[str] = None
     assigned_agency_id: Optional[str] = None
+    # the ad whose copy seeds new ads in this set
+    common_copy_ad_id: Optional[str] = None
     created_at: str
     updated_at: str
 

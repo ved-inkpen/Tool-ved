@@ -89,6 +89,16 @@ async def update_ad(ad_id: str, payload: dict, user: dict = Depends(get_current_
 
     await ads_col.update_one({'id': ad_id}, {'$set': update})
 
+    # marking/unmarking this ad as the set's common copy
+    if 'common_copy' in payload:
+        if payload['common_copy']:
+            await ad_sets_col.update_one({'id': ad['ad_set_id']}, {'$set': {'common_copy_ad_id': ad_id}})
+        else:
+            await ad_sets_col.update_one(
+                {'id': ad['ad_set_id'], 'common_copy_ad_id': ad_id},
+                {'$set': {'common_copy_ad_id': None}},
+            )
+
     # If any ad in the set gets edited back to draft, also reset ad set status
     ad_set = await ad_sets_col.find_one({'id': ad['ad_set_id']})
     if ad_set and ad_set['status'] in ('pending_script_review',):

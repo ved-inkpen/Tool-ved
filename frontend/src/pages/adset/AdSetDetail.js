@@ -22,6 +22,7 @@ export default function AdSetDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedAdId, setSelectedAdId] = useState(null);
   const [adDetail, setAdDetail] = useState(null);
+  const [adLoadError, setAdLoadError] = useState(null);
   const [activeTab, setActiveTab] = useState('ads');
   const [addOpen, setAddOpen] = useState(false);
   const [newAd, setNewAd] = useState(emptyAd());
@@ -44,9 +45,19 @@ export default function AdSetDetail() {
 
   useEffect(() => {
     if (!selectedAdId) return;
+    let cancelled = false;
+    setAdDetail(null);
+    setAdLoadError(null);
     (async () => {
-      try { setAdDetail((await api.get(`/ads/${selectedAdId}`)).data); } catch (e) { setAdDetail(null); }
+      try {
+        const { data: d } = await api.get(`/ads/${selectedAdId}`);
+        if (!cancelled) setAdDetail(d);
+      } catch (e) {
+        // never leave the pane spinning — say why it could not load
+        if (!cancelled) setAdLoadError(e?.response?.data?.detail || 'This ad could not be loaded.');
+      }
     })();
+    return () => { cancelled = true; };
   }, [selectedAdId, data]);
 
   const submit = async () => {
@@ -177,7 +188,12 @@ export default function AdSetDetail() {
             )}
           </aside>
           <section className="p-6 lg:p-8">
-            {!adDetail ? <PageLoader /> : (
+            {adLoadError ? (
+              <div data-testid="adset-ad-error" className="card-elevated p-6 max-w-lg">
+                <div className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Can’t show this ad</div>
+                <div className="text-sm text-[color:var(--text-3)] mt-1">{adLoadError}</div>
+              </div>
+            ) : !adDetail ? <PageLoader /> : (
               <AdDetailBody ad={adDetail.ad} reviews={adDetail.reviews || []} versions={adDetail.versions || []} agency={adDetail.assigned_agency} editor={adDetail.assigned_editor} onResubmit={() => resubmitAd(adDetail.ad.id)} onEdit={openEdit} setStatus={ad_set.status} isOwner={isOwner} />
             )}
           </section>

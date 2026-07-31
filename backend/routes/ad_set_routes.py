@@ -155,6 +155,8 @@ async def add_ad_to_set(ad_set_id: str, payload: AdInput, submit: bool = False, 
         status = 'pending_script_review' if ad_set['type'] == 'script' else 'pending_final_review'
 
     ad_doc = _build_ad_doc(payload, ad_set_id, ad_set['ad_set_code'], ad_set['type'], status, user, now)
+    # agency lives on the set, so a late addition joins whichever agency it already has
+    ad_doc['assigned_agency_id'] = ad_set.get('assigned_agency_id')
     await ads_col.insert_one(ad_doc)
     await ad_sets_col.update_one({'id': ad_set_id}, {'$set': {'updated_at': now}})
 

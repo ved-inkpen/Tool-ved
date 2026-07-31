@@ -17,6 +17,7 @@ export default function AgencyAdSetDetail() {
   const [data, setData] = useState(null);
   const [editors, setEditors] = useState([]);
   const [adDetail, setAdDetail] = useState(null);
+  const [adError, setAdError] = useState(null);
   const [selectedAdId, setSelectedAdId] = useState(null);
   const [busyAdId, setBusyAdId] = useState(null);
   const [bulkEditor, setBulkEditor] = useState('');
@@ -39,9 +40,19 @@ export default function AgencyAdSetDetail() {
 
   useEffect(() => {
     if (!selectedAdId) return;
+    let cancelled = false;
+    setAdDetail(null);
+    setAdError(null);
     (async () => {
-      try { setAdDetail((await api.get(`/ads/${selectedAdId}`)).data); } catch (e) { setAdDetail(null); }
+      try {
+        const { data: d } = await api.get(`/ads/${selectedAdId}`);
+        if (!cancelled) setAdDetail(d);
+      } catch (e) {
+        // never leave the pane spinning — say why it could not load
+        if (!cancelled) setAdError(e?.response?.data?.detail || 'This ad could not be loaded.');
+      }
     })();
+    return () => { cancelled = true; };
   }, [selectedAdId, data]);
 
   const assign = async (adId, editorId) => {
@@ -171,7 +182,12 @@ export default function AgencyAdSetDetail() {
         </aside>
 
         <section className="p-6 lg:p-8">
-          {!adDetail ? <PageLoader /> : (
+          {adError ? (
+            <div data-testid="agency-adset-ad-error" className="card-elevated p-6 max-w-lg">
+              <div className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Can’t show this ad</div>
+              <div className="text-sm text-[color:var(--text-3)] mt-1">{adError}</div>
+            </div>
+          ) : !adDetail ? <PageLoader /> : (
             <AdDetailBody
               ad={adDetail.ad}
               reviews={adDetail.reviews || []}

@@ -15,11 +15,8 @@ export default function CreateAdSet() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  /** Only one ad can be the set's common copy, so ticking one unticks the rest. */
-  const setAd = (idx, next) => setAds((prev) => prev.map((a, i) => {
-    if (i === idx) return next;
-    return next.common_copy && a.common_copy ? { ...a, common_copy: false } : a;
-  }));
+  // Ads sharing the set's common copy all stay ticked — the tick is not exclusive.
+  const setAd = (idx, next) => setAds((prev) => prev.map((a, i) => (i === idx ? next : a)));
   const removeAd = (idx) => {
     setAds((prev) => prev.filter((_, i) => i !== idx));
     setActiveIdx((prev) => (prev >= idx && prev > 0 ? prev - 1 : prev));
@@ -39,6 +36,7 @@ export default function CreateAdSet() {
     setAds((prev) => [...prev, next]);
     setActiveIdx(ads.length);
     if (source) toast.success('Ad copy prefilled from the common ad');
+
   };
 
   const submit = async (asDraft) => {

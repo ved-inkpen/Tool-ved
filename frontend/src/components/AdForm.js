@@ -19,7 +19,10 @@ export function emptyAd() {
   };
 }
 
-/** Seed a new ad with the set's shared copy, when one has been marked common. */
+/**
+ * Seed a new ad with the set's shared copy, when one has been marked common.
+ * The tick carries over too, so the whole set stays visibly on shared copy.
+ */
 export function adFromCommonCopy(common) {
   const base = emptyAd();
   if (!common) return base;
@@ -27,6 +30,7 @@ export function adFromCommonCopy(common) {
     ...base,
     headlines: common.headlines?.length ? [...common.headlines] : [''],
     primary_texts: common.primary_texts?.length ? [...common.primary_texts] : [''],
+    common_copy: true,
   };
 }
 

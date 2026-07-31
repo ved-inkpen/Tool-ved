@@ -3,7 +3,7 @@ from typing import Optional
 from database import ads_col, ad_sets_col, users_col, reviews_col, versions_col, agencies_col
 from auth import get_current_user, require_roles
 from models import AdInput, FileRef
-from utils import clean_doc, new_id, now_iso, gen_code, state_entry
+from utils import clean_doc, new_id, now_iso, gen_code, state_entry, normalize_ad
 from notifications import notify, notify_role
 
 router = APIRouter(prefix='/api/ads', tags=['ads'])
@@ -45,7 +45,7 @@ async def get_ad(ad_id: str, user: dict = Depends(get_current_user)):
     if ad.get('assigned_agency_id'):
         agency = await agencies_col.find_one({'id': ad['assigned_agency_id']}, {'_id': 0})
     return {
-        'ad': ad,
+        'ad': normalize_ad(ad),
         'reviews': reviews,
         'versions': versions,
         'assigned_editor': editor,
@@ -65,11 +65,19 @@ async def update_ad(ad_id: str, payload: dict, user: dict = Depends(get_current_
     allowed_fields = {
         'name', 'script', 'visual_guidelines', 'reference_links',
         'reference_media', 'media_file', 'headline', 'primary_text',
+        'headlines', 'primary_texts',
     }
     update = {'updated_at': now_iso()}
     for k, v in payload.items():
         if k in allowed_fields:
             update[k] = v
+    # Keep singular fields in sync when arrays are edited
+    if 'headlines' in update and isinstance(update['headlines'], list):
+        update['headlines'] = [h for h in update['headlines'] if h and str(h).strip()][:5]
+        update['headline'] = update['headlines'][0] if update['headlines'] else ''
+    if 'primary_texts' in update and isinstance(update['primary_texts'], list):
+        update['primary_texts'] = [t for t in update['primary_texts'] if t and str(t).strip()][:5]
+        update['primary_text'] = update['primary_texts'][0] if update['primary_texts'] else ''
 
     # if it was script_rejected and edited, reset to draft so creator can resubmit
     if ad['status'] == 'script_rejected':

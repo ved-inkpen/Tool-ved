@@ -106,8 +106,11 @@ class AdInput(BaseModel):
     reference_links: List[str] = []
     reference_media: List[FileRef] = []
     media_file: Optional[FileRef] = None  # for media_ready path
-    headline: str = ''
-    primary_text: str = ''
+    headlines: List[str] = Field(default_factory=list, max_length=5)
+    primary_texts: List[str] = Field(default_factory=list, max_length=5)
+    # legacy single fields (backward compat)
+    headline: Optional[str] = ''
+    primary_text: Optional[str] = ''
 
 
 class Ad(BaseModel):

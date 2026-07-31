@@ -3,7 +3,7 @@ from typing import List, Optional
 from database import ad_sets_col, ads_col, users_col, agencies_col
 from auth import get_current_user, require_roles
 from models import AdSetCreate
-from utils import clean_doc, new_id, now_iso, gen_code, state_entry
+from utils import clean_doc, new_id, now_iso, gen_code, state_entry, normalize_ad
 from notifications import notify_role
 
 router = APIRouter(prefix='/api/ad-sets', tags=['ad-sets'])
@@ -28,6 +28,13 @@ async def create_ad_set(payload: AdSetCreate, user: dict = Depends(require_roles
         if payload.type == 'media_ready':
             if not ad_input.media_file:
                 raise HTTPException(status_code=400, detail=f"Media file is required for media-ready ad '{ad_input.name}'")
+        # Normalize headlines/primary_texts: prefer arrays; if empty and legacy single field provided, upgrade to array
+        headlines = [h for h in (ad_input.headlines or []) if h and str(h).strip()][:5]
+        if not headlines and (ad_input.headline or '').strip():
+            headlines = [ad_input.headline.strip()]
+        primary_texts = [t for t in (ad_input.primary_texts or []) if t and str(t).strip()][:5]
+        if not primary_texts and (ad_input.primary_text or '').strip():
+            primary_texts = [ad_input.primary_text.strip()]
         ad_doc = {
             'id': new_id(),
             'ad_code': gen_code('AD'),
@@ -40,8 +47,11 @@ async def create_ad_set(payload: AdSetCreate, user: dict = Depends(require_roles
             'reference_links': ad_input.reference_links or [],
             'reference_media': [m.model_dump() if hasattr(m, 'model_dump') else m for m in (ad_input.reference_media or [])],
             'media_file': ad_input.media_file.model_dump() if ad_input.media_file else None,
-            'headline': ad_input.headline or '',
-            'primary_text': ad_input.primary_text or '',
+            'headlines': headlines,
+            'primary_texts': primary_texts,
+            # keep legacy fields synced for backward compat
+            'headline': headlines[0] if headlines else '',
+            'primary_text': primary_texts[0] if primary_texts else '',
             'status': ad_status,
             'assigned_agency_id': None,
             'assigned_editor_id': None,
@@ -157,6 +167,7 @@ async def get_ad_set(ad_set_id: str, user: dict = Depends(get_current_user)):
     # For video_editor, only their ads
     if role == 'video_editor':
         ads = [a for a in ads if a.get('assigned_editor_id') == user['id']]
+    ads = [normalize_ad(a) for a in ads]
     # Attach agency name
     agency_name = None
     if ad_set.get('assigned_agency_id'):

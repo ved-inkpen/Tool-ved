@@ -1,34 +1,30 @@
 [
   {
-    "content": "Backend: Add state_history tracking on ads for analytics",
-    "status": "completed"
-  },
-  {
-    "content": "Backend: Add /api/analytics/ad-sets/{id} endpoint (time in stage, reviewer response times)",
-    "status": "completed"
-  },
-  {
-    "content": "Backend: Comment threads - collection + endpoints (list/post/delete)",
-    "status": "completed"
-  },
-  {
-    "content": "Frontend: Editor Kanban with drag-and-drop (To Do -> In Review triggers upload)",
-    "status": "completed"
-  },
-  {
-    "content": "Frontend: Bulk approve/reject buttons on Script Review Detail",
-    "status": "completed"
-  },
-  {
-    "content": "Frontend: Analytics panel on Ad Set Detail",
-    "status": "completed"
-  },
-  {
-    "content": "Frontend: Comment thread component in Ad detail views",
-    "status": "completed"
-  },
-  {
-    "content": "Testing agent E2E on all 4 features",
+    "content": "Backend: Support up to 5 headlines & 5 primary texts per ad (arrays with backward compat)",
     "status": "in_progress"
+  },
+  {
+    "content": "Backend: Split editor upload & submit - upload no longer auto-transitions; new /editor/submit endpoint",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend: Rewrite Create Ad Set flow - one ad at a time with tabs, + button, Submit at top",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend: Editor Ad Detail - brief prominently displayed (script/guidelines/refs/media) + upload + separate Submit",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend: Update AdDetailBody and Downloads to render arrays of headlines/primary texts",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend: Update Kanban drop flow to align with new upload-then-submit semantic",
+    "status": "pending"
+  },
+  {
+    "content": "Testing agent E2E on all 4 changes",
+    "status": "pending"
   }
 ]

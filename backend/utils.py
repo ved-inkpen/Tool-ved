@@ -69,3 +69,22 @@ def humanize_seconds(sec: Optional[float]) -> str:
     d = sec // 86400
     h = (sec % 86400) // 3600
     return f"{int(d)}d {int(h)}h" if h else f"{int(d)}d"
+
+
+def normalize_ad(ad: dict) -> dict:
+    """Ensure ad has headlines[] and primary_texts[] arrays; upgrade legacy fields."""
+    if ad is None:
+        return ad
+    if 'headlines' not in ad or ad.get('headlines') is None:
+        legacy = ad.get('headline') or ''
+        ad['headlines'] = [legacy] if legacy else []
+    if 'primary_texts' not in ad or ad.get('primary_texts') is None:
+        legacy = ad.get('primary_text') or ''
+        ad['primary_texts'] = [legacy] if legacy else []
+    # keep legacy singular fields for downstream consumers
+    if not ad.get('headline') and ad.get('headlines'):
+        ad['headline'] = ad['headlines'][0]
+    if not ad.get('primary_text') and ad.get('primary_texts'):
+        ad['primary_text'] = ad['primary_texts'][0]
+    return ad
+

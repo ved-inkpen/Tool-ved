@@ -70,6 +70,19 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
 
 
+class AgencyEditorCreate(BaseModel):
+    """Agency admins add editors to their own agency; role/agency are implied."""
+    email: EmailStr
+    name: str
+    password: str = Field(min_length=6)
+
+
+class AgencyEditorUpdate(BaseModel):
+    name: Optional[str] = None
+    active: Optional[bool] = None
+    password: Optional[str] = None
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str

@@ -15,6 +15,7 @@ import AdSetDetail from '@/pages/adset/AdSetDetail';
 import ScriptReviewQueue from '@/pages/reviewer/Queue';
 import ScriptReviewDetail from '@/pages/reviewer/Detail';
 import AgencyDashboard from '@/pages/agency/Dashboard';
+import AgencyEditors from '@/pages/agency/Editors';
 import EditorDashboard from '@/pages/editor/Dashboard';
 import EditorAdDetail from '@/pages/editor/Detail';
 import FinalReviewQueue from '@/pages/final/Queue';
@@ -53,6 +54,7 @@ function App() {
               <Route path="/script-review/:id" element={<Protected roles={['script_reviewer', 'admin']}><ScriptReviewDetail /></Protected>} />
               {/* Agency Admin */}
               <Route path="/agency" element={<Protected roles={['agency_admin', 'admin']}><AgencyDashboard /></Protected>} />
+              <Route path="/agency/editors" element={<Protected roles={['agency_admin', 'admin']}><AgencyEditors /></Protected>} />
               {/* Editor */}
               <Route path="/editor" element={<Protected roles={['video_editor', 'admin']}><EditorDashboard /></Protected>} />
               <Route path="/editor/ads/:id" element={<Protected roles={['video_editor', 'admin']}><EditorAdDetail /></Protected>} />

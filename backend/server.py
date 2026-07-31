@@ -13,7 +13,7 @@ from auth import hash_password
 from utils import new_id, now_iso
 
 from routes.auth_routes import router as auth_router
-from routes.admin_routes import router as admin_router, directory_router
+from routes.admin_routes import router as admin_router, directory_router, agency_router
 from routes.upload_routes import router as upload_router
 from routes.ad_set_routes import router as ad_set_router
 from routes.ad_routes import router as ad_router
@@ -46,6 +46,7 @@ async def health():
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(directory_router)
+app.include_router(agency_router)
 app.include_router(upload_router)
 app.include_router(ad_set_router)
 app.include_router(ad_router)

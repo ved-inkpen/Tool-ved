@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Search, Users, Building2, Video,
-  ClipboardCheck, CheckCircle2, Download, Menu, LogOut, ChevronDown, Sparkles
+  ClipboardCheck, CheckCircle2, Download, Menu, LogOut, ChevronDown, Sparkles, UsersRound
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -53,6 +53,7 @@ function navFor(role) {
       label: 'Agency',
       items: [
         { to: '/agency', label: 'Agency Dashboard', icon: Building2 },
+        { to: '/agency/editors', label: 'My Editors', icon: UsersRound },
       ],
     });
   }

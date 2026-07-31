@@ -1,46 +1,34 @@
 [
   {
-    "content": "Phase 1: Backend foundation - Auth, users, agencies, models",
+    "content": "Backend: Add state_history tracking on ads for analytics",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Backend workflows - Ad Sets, Ads, reviews, uploads, notifications",
+    "content": "Backend: Add /api/analytics/ad-sets/{id} endpoint (time in stage, reviewer response times)",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Python E2E test script covering all workflow user stories",
+    "content": "Backend: Comment threads - collection + endpoints (list/post/delete)",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Fix any issues found in test script",
+    "content": "Frontend: Editor Kanban with drag-and-drop (To Do -> In Review triggers upload)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Design guidelines via design_agent",
+    "content": "Frontend: Bulk approve/reject buttons on Script Review Detail",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Frontend - Auth, App shell, dark theme, notifications",
+    "content": "Frontend: Analytics panel on Ad Set Detail",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Frontend - Admin dashboard (users, agencies, invites)",
+    "content": "Frontend: Comment thread component in Ad detail views",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Frontend - Creator, Script Reviewer, Agency Admin views",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Frontend - Editor, Final Reviewer, Download views",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: End-to-end testing via testing_agent_v3",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Fix all issues found in testing",
-    "status": "completed"
+    "content": "Testing agent E2E on all 4 features",
+    "status": "in_progress"
   }
 ]

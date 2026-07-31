@@ -3,7 +3,7 @@ from typing import List, Optional
 from database import ad_sets_col, ads_col, users_col, agencies_col
 from auth import get_current_user, require_roles
 from models import AdSetCreate
-from utils import clean_doc, new_id, now_iso, gen_code
+from utils import clean_doc, new_id, now_iso, gen_code, state_entry
 from notifications import notify_role
 
 router = APIRouter(prefix='/api/ad-sets', tags=['ad-sets'])
@@ -50,6 +50,7 @@ async def create_ad_set(payload: AdSetCreate, user: dict = Depends(require_roles
             'created_by': user['id'],
             'created_at': now,
             'updated_at': now,
+            'state_history': [state_entry('draft', user)],
         }
         ad_docs.append(ad_doc)
 
@@ -96,7 +97,7 @@ async def submit_ad_set(ad_set_id: str, user: dict = Depends(get_current_user)):
         await notify_role('final_reviewer', 'New media ready for review', f"Media-ready Ad Set '{ad_set['name']}' submitted for final review", f"/final-review")
 
     await ad_sets_col.update_one({'id': ad_set_id}, {'$set': {'status': new_ad_set_status, 'updated_at': now}})
-    await ads_col.update_many({'ad_set_id': ad_set_id, 'status': 'draft'}, {'$set': {'status': new_ad_status, 'updated_at': now}})
+    await ads_col.update_many({'ad_set_id': ad_set_id, 'status': 'draft'}, {'$set': {'status': new_ad_status, 'updated_at': now}, '$push': {'state_history': state_entry(new_ad_status, user)}})
     return {'ok': True}
 
 

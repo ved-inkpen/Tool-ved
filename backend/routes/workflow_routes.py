@@ -6,7 +6,7 @@ from models import (
     ScriptReviewDecision, BulkScriptReviewDecision, AgencyAssignInput,
     EditorUploadInput, FinalReviewDecision, FileRef
 )
-from utils import clean_doc, new_id, now_iso
+from utils import clean_doc, new_id, now_iso, state_entry
 from notifications import notify, notify_role
 
 router = APIRouter(prefix='/api/workflow', tags=['workflow'])
@@ -58,7 +58,7 @@ async def script_review_ad(ad_id: str, decision: ScriptReviewDecision, user: dic
             'assigned_agency_id': decision.agency_id,
             'latest_review_comment': decision.comments or None,
             'updated_at': now,
-        }})
+        }, '$push': {'state_history': state_entry('assigned_agency', user, {'agency_id': decision.agency_id})}})
         # Also set ad set assigned agency (first assignment) if not set
         await ad_sets_col.update_one({'id': ad['ad_set_id'], 'assigned_agency_id': None}, {'$set': {'assigned_agency_id': decision.agency_id}})
         # Notify agency admins
@@ -69,7 +69,7 @@ async def script_review_ad(ad_id: str, decision: ScriptReviewDecision, user: dic
             'status': 'script_rejected',
             'latest_review_comment': decision.comments or 'Rejected',
             'updated_at': now,
-        }})
+        }, '$push': {'state_history': state_entry('script_rejected', user)}})
         # Notify creator
         await notify(ad['created_by'], 'Script needs revision', f"Your script for '{ad['name']}' was rejected. Please review comments.", f"/creator")
         review_action = 'reject'
@@ -126,7 +126,7 @@ async def agency_assign(payload: AgencyAssignInput, user: dict = Depends(require
             'status': 'assigned_editor',
             'assigned_editor_id': payload.editor_id,
             'updated_at': now,
-        }})
+        }, '$push': {'state_history': state_entry('assigned_editor', user, {'editor_id': payload.editor_id})}})
         assigned.append(ad_id)
 
     # Notify editor
@@ -165,7 +165,7 @@ async def editor_upload(ad_id: str, payload: EditorUploadInput, user: dict = Dep
         'status': 'pending_final_review',
         'latest_review_comment': None,
         'updated_at': now,
-    }})
+    }, '$push': {'state_history': state_entry('pending_final_review', user, {'version': new_version})}})
     # Notify final reviewers
     await notify_role('final_reviewer', 'New media for final review', f"Ad '{ad['name']}' submitted for final review", f"/final-review")
     await _recompute_ad_set_status(ad['ad_set_id'])
@@ -182,17 +182,17 @@ async def final_review(ad_id: str, decision: FinalReviewDecision, user: dict = D
         raise HTTPException(status_code=400, detail=f"Ad not pending final review (current: {ad['status']})")
     now = now_iso()
     if decision.action == 'approve':
-        await ads_col.update_one({'id': ad_id}, {'$set': {'status': 'approved', 'latest_review_comment': decision.comments or None, 'updated_at': now}})
+        await ads_col.update_one({'id': ad_id}, {'$set': {'status': 'approved', 'latest_review_comment': decision.comments or None, 'updated_at': now}, '$push': {'state_history': state_entry('approved', user)}})
         await notify(ad['created_by'], 'Ad approved', f"Your ad '{ad['name']}' has been approved and is ready for download", f"/downloads")
         if ad.get('assigned_editor_id'):
             await notify(ad['assigned_editor_id'], 'Ad approved', f"Your work on '{ad['name']}' has been approved", f"/editor")
     else:
         # If it's a media_ready ad, rejection returns to creator; else to editor
         if ad['type'] == 'media_ready':
-            await ads_col.update_one({'id': ad_id}, {'$set': {'status': 'script_rejected', 'latest_review_comment': decision.comments or 'Rejected', 'updated_at': now}})
+            await ads_col.update_one({'id': ad_id}, {'$set': {'status': 'script_rejected', 'latest_review_comment': decision.comments or 'Rejected', 'updated_at': now}, '$push': {'state_history': state_entry('script_rejected', user)}})
             await notify(ad['created_by'], 'Ad needs revision', f"Your ad '{ad['name']}' was rejected. Please review comments.", f"/creator")
         else:
-            await ads_col.update_one({'id': ad_id}, {'$set': {'status': 'final_rejected', 'latest_review_comment': decision.comments or 'Rejected', 'updated_at': now}})
+            await ads_col.update_one({'id': ad_id}, {'$set': {'status': 'final_rejected', 'latest_review_comment': decision.comments or 'Rejected', 'updated_at': now}, '$push': {'state_history': state_entry('final_rejected', user)}})
             if ad.get('assigned_editor_id'):
                 await notify(ad['assigned_editor_id'], 'Ad rejected - revision needed', f"Ad '{ad['name']}' needs a new version", f"/editor")
 

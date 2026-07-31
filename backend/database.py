@@ -21,6 +21,7 @@ reviews_col = db.ad_reviews
 versions_col = db.ad_versions
 notifications_col = db.notifications
 files_col = db.files
+comments_col = db.ad_comments
 
 # Upload directory
 UPLOAD_DIR = ROOT_DIR / 'uploads'
@@ -35,3 +36,5 @@ async def ensure_indexes():
     await notifications_col.create_index('user_id')
     await reviews_col.create_index('ad_id')
     await versions_col.create_index('ad_id')
+    await comments_col.create_index('ad_id')
+    await comments_col.create_index('created_at')

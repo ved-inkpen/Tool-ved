@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { PageHeader, PageLoader } from '@/components/Shared';
 import { StatusPill } from '@/components/StatusPill';
 import { AdDetailBody } from '@/pages/adset/AdSetDetail';
-import { ArrowLeft, Check, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, X, Loader2, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,8 @@ export default function ScriptReviewDetail() {
   const [agencies, setAgencies] = useState([]);
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState('approve');
   const [agencyId, setAgencyId] = useState('');
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
@@ -63,17 +65,45 @@ export default function ScriptReviewDetail() {
     } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setBusy(false); }
   };
 
+  const bulkSubmit = async () => {
+    const pendingIds = ads.filter(a => a.status === 'pending_script_review').map(a => a.id);
+    if (pendingIds.length === 0) { toast.error('No ads pending review'); return; }
+    if (bulkAction === 'approve' && !agencyId) { toast.error('Select an agency'); return; }
+    if (bulkAction === 'reject' && !comment.trim()) { toast.error('Add feedback'); return; }
+    setBusy(true);
+    try {
+      const { data } = await api.post('/workflow/script-review/bulk', {
+        ad_ids: pendingIds,
+        action: bulkAction,
+        comments: comment,
+        agency_id: bulkAction === 'approve' ? agencyId : undefined,
+      });
+      const okCount = data.results.filter(r => r.ok).length;
+      toast.success(`${okCount} of ${pendingIds.length} ad(s) ${bulkAction === 'approve' ? 'approved' : 'rejected'}`);
+      setBulkOpen(false); setComment(''); setAgencyId('');
+      await load();
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setBusy(false); }
+  };
+
   if (!data) return <div><PageHeader title="Script Review" /><div className="p-6"><PageLoader /></div></div>;
   const currentAd = ads.find(a => a.id === selectedAdId);
   const canReview = currentAd && currentAd.status === 'pending_script_review';
+  const pendingCount = ads.filter(a => a.status === 'pending_script_review').length;
 
   return (
     <div>
       <PageHeader
         title={data.name}
-        subtitle={<span className="inline-flex items-center gap-2"><span style={{ fontFamily: 'var(--font-mono)' }}>{data.ad_set_code}</span> · Script review</span>}
+        subtitle={<span className="inline-flex items-center gap-2"><span style={{ fontFamily: 'var(--font-mono)' }}>{data.ad_set_code}</span> · Script review · <span className="text-[color:var(--text-3)]">{pendingCount} pending</span></span>}
         breadcrumbs="Script Review"
-        actions={<button data-testid="script-review-back-button" onClick={() => nav(-1)} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors"><ArrowLeft size={14} /> Back</button>}
+        actions={<>
+          <button data-testid="script-review-back-button" onClick={() => nav(-1)} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors"><ArrowLeft size={14} /> Back</button>
+          {pendingCount > 1 && (
+            <button data-testid="script-review-bulk-button" onClick={() => { setBulkAction('approve'); setBulkOpen(true); }} className="h-9 px-4 rounded-lg border border-[color:var(--brand-teal)]/40 text-[color:var(--brand-teal)] hover:bg-[color:var(--brand-teal)]/10 text-sm inline-flex items-center gap-2 transition-colors">
+              <Layers size={14} /> Review all ({pendingCount})
+            </button>
+          )}
+        </>}
       />
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr]">
         <aside className="border-r border-[color:var(--stroke)] p-4 space-y-2">
@@ -104,6 +134,7 @@ export default function ScriptReviewDetail() {
         </section>
       </div>
 
+      {/* Single approve */}
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
         <DialogContent className="bg-[color:var(--bg-1)] border-[color:var(--stroke)] text-[color:var(--text-1)]">
           <DialogHeader><DialogTitle style={{ fontFamily: 'var(--font-display)' }}>Approve & assign</DialogTitle></DialogHeader>
@@ -128,6 +159,7 @@ export default function ScriptReviewDetail() {
         </DialogContent>
       </Dialog>
 
+      {/* Single reject */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent className="bg-[color:var(--bg-1)] border-[color:var(--stroke)] text-[color:var(--text-1)]">
           <DialogHeader><DialogTitle style={{ fontFamily: 'var(--font-display)' }}>Reject script</DialogTitle></DialogHeader>
@@ -138,6 +170,40 @@ export default function ScriptReviewDetail() {
           </div>
           <DialogFooter>
             <button data-testid="script-review-reject-confirm" onClick={reject} disabled={busy || !comment.trim()} className="h-9 px-4 rounded-lg text-sm text-[color:#FFB4B4] bg-[color:rgba(248,113,113,0.14)] border border-[color:rgba(248,113,113,0.30)] hover:bg-[color:rgba(248,113,113,0.22)] inline-flex items-center gap-2">{busy && <Loader2 className="animate-spin" size={14} />} Reject</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk review */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="bg-[color:var(--bg-1)] border-[color:var(--stroke)] text-[color:var(--text-1)]">
+          <DialogHeader><DialogTitle style={{ fontFamily: 'var(--font-display)' }}>Review {pendingCount} ad(s) at once</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <button data-testid="script-review-bulk-tab-approve" onClick={() => setBulkAction('approve')} className={`h-9 px-4 rounded-lg text-sm inline-flex items-center gap-2 border transition-colors ${bulkAction === 'approve' ? 'border-[color:var(--brand-teal)] bg-[color:var(--brand-teal)]/10 text-[color:#6EF3E6]' : 'border-[color:var(--stroke)] text-[color:var(--text-2)] hover:bg-white/5'}`}><Check size={14} /> Approve & assign</button>
+              <button data-testid="script-review-bulk-tab-reject" onClick={() => setBulkAction('reject')} className={`h-9 px-4 rounded-lg text-sm inline-flex items-center gap-2 border transition-colors ${bulkAction === 'reject' ? 'border-[color:#FFB4B4]/40 bg-[color:rgba(248,113,113,0.10)] text-[color:#FFB4B4]' : 'border-[color:var(--stroke)] text-[color:var(--text-2)] hover:bg-white/5'}`}><X size={14} /> Reject</button>
+            </div>
+            <div className="text-xs text-[color:var(--text-3)]">{bulkAction === 'approve' ? `All ${pendingCount} pending ad(s) will be approved and assigned to the selected agency with the same comment.` : `All ${pendingCount} pending ad(s) will be sent back with the same feedback.`}</div>
+            {bulkAction === 'approve' && (
+              <div>
+                <label className="text-xs text-[color:var(--text-2)]">Assign to agency</label>
+                <Select value={agencyId} onValueChange={setAgencyId}>
+                  <SelectTrigger data-testid="script-review-bulk-agency-select" className="bg-[color:var(--bg-2)] border-[color:var(--stroke)] mt-1"><SelectValue placeholder="Choose agency" /></SelectTrigger>
+                  <SelectContent className="bg-[color:var(--bg-1)] border-[color:var(--stroke)]">
+                    {agencies.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div>
+              <label className="text-xs text-[color:var(--text-2)]">{bulkAction === 'approve' ? 'Notes for the agency (optional)' : 'Feedback for creator (required)'}</label>
+              <textarea data-testid="script-review-bulk-comment" value={comment} onChange={(e) => setComment(e.target.value)} className="mt-1 w-full min-h-[100px] rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] p-3 text-sm" placeholder={bulkAction === 'approve' ? 'Handoff notes…' : 'Explain what to change…'} />
+            </div>
+          </div>
+          <DialogFooter>
+            <button data-testid="script-review-bulk-confirm" onClick={bulkSubmit} disabled={busy || (bulkAction === 'approve' ? !agencyId : !comment.trim())} className={`h-9 px-4 rounded-lg text-sm inline-flex items-center gap-2 transition-colors ${bulkAction === 'approve' ? 'bg-[color:var(--brand-teal)] hover:bg-[color:var(--brand-teal-hover)] text-white' : 'text-[color:#FFB4B4] bg-[color:rgba(248,113,113,0.14)] border border-[color:rgba(248,113,113,0.30)] hover:bg-[color:rgba(248,113,113,0.22)]'}`}>
+              {busy && <Loader2 className="animate-spin" size={14} />} {bulkAction === 'approve' ? 'Approve all' : 'Reject all'}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

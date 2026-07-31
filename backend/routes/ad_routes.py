@@ -3,7 +3,7 @@ from typing import Optional
 from database import ads_col, ad_sets_col, users_col, reviews_col, versions_col, agencies_col
 from auth import get_current_user, require_roles
 from models import AdInput, FileRef
-from utils import clean_doc, new_id, now_iso, gen_code
+from utils import clean_doc, new_id, now_iso, gen_code, state_entry
 from notifications import notify, notify_role
 
 router = APIRouter(prefix='/api/ads', tags=['ads'])
@@ -99,7 +99,7 @@ async def resubmit_ad(ad_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Only draft or script_rejected ads can be resubmitted")
     ad_set = await _get_ad_set_or_404(ad['ad_set_id'])
     new_status = 'pending_script_review' if ad_set['type'] == 'script' else 'pending_final_review'
-    await ads_col.update_one({'id': ad_id}, {'$set': {'status': new_status, 'updated_at': now_iso(), 'latest_review_comment': None}})
+    await ads_col.update_one({'id': ad_id}, {'$set': {'status': new_status, 'updated_at': now_iso(), 'latest_review_comment': None}, '$push': {'state_history': state_entry(new_status, user, {'reason': 'resubmit'})}})
     if ad_set['status'] == 'draft':
         await ad_sets_col.update_one({'id': ad_set['id']}, {'$set': {'status': 'pending_script_review' if ad_set['type'] == 'script' else 'in_progress', 'updated_at': now_iso()}})
     # Notify appropriate reviewer

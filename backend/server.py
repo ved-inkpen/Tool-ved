@@ -19,6 +19,8 @@ from routes.ad_set_routes import router as ad_set_router
 from routes.ad_routes import router as ad_router
 from routes.workflow_routes import router as workflow_router
 from routes.notification_routes import router as notifications_router
+from routes.comment_routes import router as comment_router
+from routes.analytics_routes import router as analytics_router
 
 app = FastAPI(title='Marketing Studio API', version='1.0.0')
 
@@ -49,6 +51,8 @@ app.include_router(ad_set_router)
 app.include_router(ad_router)
 app.include_router(workflow_router)
 app.include_router(notifications_router)
+app.include_router(comment_router)
+app.include_router(analytics_router)
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -4,10 +4,12 @@ import { api, fileUrl } from '@/lib/api';
 import { PageHeader, PageLoader } from '@/components/Shared';
 import { StatusPill } from '@/components/StatusPill';
 import { MediaPreview } from '@/components/MediaPreview';
-import { ArrowLeft, Send, ExternalLink, MessageSquare, Loader2, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Send, ExternalLink, MessageSquare, Loader2, PlayCircle, BarChart3, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
+import { CommentThread } from '@/components/CommentThread';
+import { AnalyticsPanel } from '@/components/AnalyticsPanel';
 
 export default function AdSetDetail() {
   const { id } = useParams();
@@ -17,6 +19,7 @@ export default function AdSetDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedAdId, setSelectedAdId] = useState(null);
   const [adDetail, setAdDetail] = useState(null);
+  const [activeTab, setActiveTab] = useState('ads');
 
   const load = async () => {
     setLoading(true);
@@ -78,30 +81,39 @@ export default function AdSetDetail() {
           </>
         }
       />
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] min-h-[calc(100vh-140px)]">
-        <aside className="border-r border-[color:var(--stroke)] p-4 space-y-2">
-          <div className="text-[10px] uppercase tracking-widest text-[color:var(--text-3)] mb-1" style={{ fontFamily: 'var(--font-mono)' }}>Ads ({ads.length})</div>
-          {ads.map((a) => (
-            <button
-              key={a.id}
-              data-testid={`adset-ad-item-${a.id}`}
-              onClick={() => setSelectedAdId(a.id)}
-              className={`w-full text-left rounded-lg p-3 border transition-colors ${selectedAdId === a.id ? 'border-[color:var(--brand-teal)]/50 bg-[color:var(--bg-2)]' : 'border-[color:var(--stroke)] hover:bg-white/[0.03]'}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-medium truncate">{a.name}</div>
-                <StatusPill status={a.status} />
-              </div>
-              <div className="text-[11px] text-[color:var(--text-3)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>{a.ad_code}</div>
-            </button>
-          ))}
-        </aside>
-        <section className="p-6 lg:p-8">
-          {!adDetail ? <PageLoader /> : (
-            <AdDetailBody ad={adDetail.ad} reviews={adDetail.reviews || []} versions={adDetail.versions || []} agency={adDetail.assigned_agency} editor={adDetail.assigned_editor} onResubmit={() => resubmitAd(adDetail.ad.id)} isOwner={isOwner} />
-          )}
-        </section>
+      <div className="px-6 lg:px-8 pt-4 flex items-center gap-2 border-b border-[color:var(--stroke)]">
+        <button data-testid="adset-tab-ads" onClick={() => setActiveTab('ads')} className={`h-9 px-4 rounded-t-lg text-sm inline-flex items-center gap-2 border-b-2 -mb-px transition-colors ${activeTab === 'ads' ? 'border-[color:var(--brand-teal)] text-[color:var(--text-1)]' : 'border-transparent text-[color:var(--text-3)] hover:text-[color:var(--text-1)]'}`}><FileText size={14} /> Ads</button>
+        <button data-testid="adset-tab-analytics" onClick={() => setActiveTab('analytics')} className={`h-9 px-4 rounded-t-lg text-sm inline-flex items-center gap-2 border-b-2 -mb-px transition-colors ${activeTab === 'analytics' ? 'border-[color:var(--brand-teal)] text-[color:var(--text-1)]' : 'border-transparent text-[color:var(--text-3)] hover:text-[color:var(--text-1)]'}`}><BarChart3 size={14} /> Analytics</button>
       </div>
+      {activeTab === 'analytics' && (
+        <div className="p-6 lg:p-8"><AnalyticsPanel adSetId={ad_set.id} /></div>
+      )}
+      {activeTab === 'ads' && (
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] min-h-[calc(100vh-180px)]">
+          <aside className="border-r border-[color:var(--stroke)] p-4 space-y-2">
+            <div className="text-[10px] uppercase tracking-widest text-[color:var(--text-3)] mb-1" style={{ fontFamily: 'var(--font-mono)' }}>Ads ({ads.length})</div>
+            {ads.map((a) => (
+              <button
+                key={a.id}
+                data-testid={`adset-ad-item-${a.id}`}
+                onClick={() => setSelectedAdId(a.id)}
+                className={`w-full text-left rounded-lg p-3 border transition-colors ${selectedAdId === a.id ? 'border-[color:var(--brand-teal)]/50 bg-[color:var(--bg-2)]' : 'border-[color:var(--stroke)] hover:bg-white/[0.03]'}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium truncate">{a.name}</div>
+                  <StatusPill status={a.status} />
+                </div>
+                <div className="text-[11px] text-[color:var(--text-3)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>{a.ad_code}</div>
+              </button>
+            ))}
+          </aside>
+          <section className="p-6 lg:p-8">
+            {!adDetail ? <PageLoader /> : (
+              <AdDetailBody ad={adDetail.ad} reviews={adDetail.reviews || []} versions={adDetail.versions || []} agency={adDetail.assigned_agency} editor={adDetail.assigned_editor} onResubmit={() => resubmitAd(adDetail.ad.id)} isOwner={isOwner} />
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -235,6 +247,7 @@ export function AdDetailBody({ ad, reviews, versions, agency, editor, onResubmit
           )}
         </div>
       </div>
+      <CommentThread adId={ad.id} />
     </div>
   );
 }

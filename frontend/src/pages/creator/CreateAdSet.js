@@ -2,22 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { PageHeader } from '@/components/Shared';
-import { FileUpload } from '@/components/FileUpload';
-import { Plus, Trash2, Loader2, FileText, Zap, ArrowLeft } from 'lucide-react';
+import { AdFormFields, emptyAd, filled, adError, serializeAd } from '@/components/AdForm';
+import { Plus, Trash2, Loader2, FileText, Zap, ArrowLeft, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-function emptyAd() {
-  return {
-    name: '',
-    script: '',
-    visual_guidelines: '',
-    reference_links: [''],
-    reference_media: [],
-    media_file: null,
-    headline: '',
-    primary_text: '',
-  };
-}
 
 export default function CreateAdSet() {
   const nav = useNavigate();
@@ -25,34 +12,34 @@ export default function CreateAdSet() {
   const [type, setType] = useState('script');
   const [name, setName] = useState('');
   const [ads, setAds] = useState([emptyAd()]);
+  const [activeIdx, setActiveIdx] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const setAdField = (idx, field, val) => {
-    setAds(prev => prev.map((a, i) => i === idx ? { ...a, [field]: val } : a));
+  const setAd = (idx, next) => setAds((prev) => prev.map((a, i) => (i === idx ? next : a)));
+  const removeAd = (idx) => {
+    setAds((prev) => prev.filter((_, i) => i !== idx));
+    setActiveIdx((prev) => (prev >= idx && prev > 0 ? prev - 1 : prev));
   };
-  const addAd = () => setAds(prev => [...prev, emptyAd()]);
-  const removeAd = (idx) => setAds(prev => prev.filter((_, i) => i !== idx));
-  const setLink = (adIdx, linkIdx, val) => setAdField(adIdx, 'reference_links', ads[adIdx].reference_links.map((l, i) => i === linkIdx ? val : l));
-  const addLink = (adIdx) => setAdField(adIdx, 'reference_links', [...ads[adIdx].reference_links, '']);
-  const removeLink = (adIdx, linkIdx) => setAdField(adIdx, 'reference_links', ads[adIdx].reference_links.filter((_, i) => i !== linkIdx));
+
+  const errorFor = (a, i) => adError(a, type, `Ad #${i + 1}`);
+
+  /** An ad must be complete before the creator moves on to the next one. */
+  const addAd = () => {
+    const err = errorFor(ads[activeIdx], activeIdx);
+    if (err) { toast.error(`${err} before adding another`); return; }
+    setAds((prev) => [...prev, emptyAd()]);
+    setActiveIdx(ads.length);
+  };
 
   const submit = async (asDraft) => {
     if (!name.trim()) { toast.error('Ad set name required'); return; }
     for (const [i, a] of ads.entries()) {
-      if (!a.name.trim()) { toast.error(`Ad #${i+1} needs a name`); return; }
-      if (type === 'media_ready' && !a.media_file) { toast.error(`Ad #${i+1} needs media file`); return; }
+      const err = errorFor(a, i);
+      if (err) { setActiveIdx(i); toast.error(err); return; }
     }
     setBusy(true);
     try {
-      const payload = {
-        name,
-        type,
-        ads: ads.map(a => ({
-          ...a,
-          reference_links: (a.reference_links || []).filter(l => l && l.trim()),
-        })),
-      };
-      const { data } = await api.post('/ad-sets', payload);
+      const { data } = await api.post('/ad-sets', { name, type, ads: ads.map(serializeAd) });
       const adSetId = data.ad_set.id;
       if (!asDraft) {
         await api.post(`/ad-sets/${adSetId}/submit`);
@@ -70,12 +57,22 @@ export default function CreateAdSet() {
     <div>
       <PageHeader
         title="Create ad set"
-        subtitle={`Step ${step} of 2 • ${type === 'script' ? 'Script only' : 'Media ready'}`}
+        subtitle={`Step ${step} of 2 • ${type === 'script' ? 'Script only' : 'Media ready'}${step === 2 ? ` • ${ads.length} ad${ads.length === 1 ? '' : 's'}` : ''}`}
         breadcrumbs="Creator / New Ad Set"
         actions={
-          <button data-testid="create-adset-back-button" onClick={() => nav(-1)} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors">
-            <ArrowLeft size={14} /> Back
-          </button>
+          <>
+            <button data-testid="create-adset-back-button" onClick={() => (step === 2 ? setStep(1) : nav(-1))} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors">
+              <ArrowLeft size={14} /> Back
+            </button>
+            {step === 2 && (
+              <>
+                <button data-testid="create-adset-save-draft" onClick={() => submit(true)} disabled={busy} className="h-9 px-4 rounded-lg border border-[color:var(--stroke)] hover:bg-white/5 text-sm transition-colors disabled:opacity-50">Save as draft</button>
+                <button data-testid="create-adset-submit" onClick={() => submit(false)} disabled={busy} className="h-9 px-4 rounded-lg bg-[color:var(--brand-teal)] hover:bg-[color:var(--brand-teal-hover)] text-white text-sm inline-flex items-center gap-2 transition-colors disabled:opacity-50">
+                  {busy && <Loader2 className="animate-spin" size={14} />} Submit
+                </button>
+              </>
+            )}
+          </>
         }
       />
       <div className="p-6 lg:p-8 max-w-4xl">
@@ -111,78 +108,52 @@ export default function CreateAdSet() {
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
-            {ads.map((ad, idx) => (
-              <div key={idx} className="card-elevated p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Ad #{idx + 1}</div>
-                  {ads.length > 1 && (
-                    <button data-testid={`remove-ad-${idx}`} onClick={() => removeAd(idx)} className="h-8 px-2 rounded hover:bg-white/5 text-[color:var(--text-3)] hover:text-[color:#FFB4B4] inline-flex items-center gap-1 text-xs transition-colors"><Trash2 size={12} /> Remove</button>
-                  )}
+          <div className="space-y-3">
+            {ads.map((ad, idx) => {
+              const open = idx === activeIdx;
+              const complete = !errorFor(ad, idx);
+
+              if (!open) {
+                return (
+                  <div key={idx} data-testid={`ad-summary-${idx}`} className="card-elevated flex items-center gap-3 px-4 py-3">
+                    <button onClick={() => setActiveIdx(idx)} className="flex-1 flex items-center gap-3 text-left min-w-0">
+                      {complete
+                        ? <CheckCircle2 size={14} className="shrink-0 text-[color:#D7FF9A]" />
+                        : <span className="shrink-0 h-3.5 w-3.5 rounded-full border border-[color:var(--text-3)]" />}
+                      <span className="text-xs text-[color:var(--text-3)] shrink-0" style={{ fontFamily: 'var(--font-mono)' }}>Ad #{idx + 1}</span>
+                      <span className="text-sm truncate">{ad.name || <span className="text-[color:var(--text-3)]">Untitled ad</span>}</span>
+                      <span className="text-[11px] text-[color:var(--text-3)] shrink-0 ml-auto tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
+                        {filled(ad.headlines).length}H · {filled(ad.primary_texts).length}P
+                      </span>
+                      <ChevronDown size={14} className="shrink-0 text-[color:var(--text-3)]" />
+                    </button>
+                    {ads.length > 1 && (
+                      <button data-testid={`remove-ad-${idx}`} onClick={() => removeAd(idx)} aria-label={`Remove ad ${idx + 1}`} className="h-8 w-8 shrink-0 grid place-items-center rounded hover:bg-white/5 text-[color:var(--text-3)] hover:text-[color:#FFB4B4] transition-colors"><Trash2 size={12} /></button>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div key={idx} className="card-elevated p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Ad #{idx + 1}</div>
+                    {ads.length > 1 && (
+                      <button data-testid={`remove-ad-${idx}`} onClick={() => removeAd(idx)} className="h-8 px-2 rounded hover:bg-white/5 text-[color:var(--text-3)] hover:text-[color:#FFB4B4] inline-flex items-center gap-1 text-xs transition-colors"><Trash2 size={12} /> Remove</button>
+                    )}
+                  </div>
+                  <AdFormFields ad={ad} type={type} idx={idx} onChange={(next) => setAd(idx, next)} />
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-[color:var(--text-2)]">Ad name</label>
-                    <input data-testid={`ad-name-${idx}`} value={ad.name} onChange={(e) => setAdField(idx, 'name', e.target.value)} className="mt-1 w-full h-10 rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] px-3 text-sm" placeholder="e.g., Beach Ad" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-[color:var(--text-2)]">Headline</label>
-                    <input data-testid={`ad-headline-${idx}`} value={ad.headline} onChange={(e) => setAdField(idx, 'headline', e.target.value)} className="mt-1 w-full h-10 rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] px-3 text-sm" placeholder="Attention-grabbing headline" />
-                  </div>
-                  <div className="lg:col-span-2">
-                    <label className="text-xs text-[color:var(--text-2)]">Primary text</label>
-                    <textarea data-testid={`ad-primary-text-${idx}`} value={ad.primary_text} onChange={(e) => setAdField(idx, 'primary_text', e.target.value)} className="mt-1 w-full min-h-[64px] rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] p-3 text-sm" placeholder="Main body text for the ad" />
-                  </div>
-                  <div className="lg:col-span-2">
-                    <label className="text-xs text-[color:var(--text-2)]">Script</label>
-                    <textarea data-testid={`ad-script-${idx}`} value={ad.script} onChange={(e) => setAdField(idx, 'script', e.target.value)} className="mt-1 w-full min-h-[100px] rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] p-3 text-sm" placeholder="Voice-over and scene direction…" />
-                  </div>
-                  {type === 'script' && (
-                    <>
-                      <div className="lg:col-span-2">
-                        <label className="text-xs text-[color:var(--text-2)]">Visual guidelines</label>
-                        <textarea data-testid={`ad-guidelines-${idx}`} value={ad.visual_guidelines} onChange={(e) => setAdField(idx, 'visual_guidelines', e.target.value)} className="mt-1 w-full min-h-[80px] rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] p-3 text-sm" placeholder="Color palette, mood, pacing…" />
-                      </div>
-                      <div className="lg:col-span-2">
-                        <label className="text-xs text-[color:var(--text-2)]">Reference links</label>
-                        <div className="space-y-2 mt-1">
-                          {(ad.reference_links || []).map((l, li) => (
-                            <div key={li} className="flex items-center gap-2">
-                              <input data-testid={`ad-link-${idx}-${li}`} value={l} onChange={(e) => setLink(idx, li, e.target.value)} className="flex-1 h-9 rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] px-3 text-sm" placeholder="https://…" />
-                              <button data-testid={`ad-link-remove-${idx}-${li}`} onClick={() => removeLink(idx, li)} className="h-9 w-9 grid place-items-center rounded-lg hover:bg-white/5 text-[color:var(--text-3)] transition-colors"><Trash2 size={14} /></button>
-                            </div>
-                          ))}
-                          <button data-testid={`ad-link-add-${idx}`} onClick={() => addLink(idx)} className="text-xs text-[color:var(--brand-teal)] hover:text-[color:var(--focus-ring)] inline-flex items-center gap-1"><Plus size={12} /> Add link</button>
-                        </div>
-                      </div>
-                      <div className="lg:col-span-2">
-                        <label className="text-xs text-[color:var(--text-2)]">Reference media</label>
-                        <div className="mt-1">
-                          <FileUpload multiple testId={`ad-refmedia-${idx}`} value={ad.reference_media} onChange={(v) => setAdField(idx, 'reference_media', v)} label="Upload reference media" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  {type === 'media_ready' && (
-                    <div className="lg:col-span-2">
-                      <label className="text-xs text-[color:var(--text-2)]">Video / media file</label>
-                      <div className="mt-1">
-                        <FileUpload testId={`ad-media-${idx}`} value={ad.media_file} onChange={(v) => setAdField(idx, 'media_file', v)} label="Upload final video" accept="video/*,image/*" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            <div className="flex items-center justify-between">
-              <button data-testid="create-adset-add-ad" onClick={addAd} className="h-9 px-3 rounded-lg border border-dashed border-[color:var(--stroke)] hover:bg-white/5 text-sm inline-flex items-center gap-2 transition-colors"><Plus size={14} /> Add another ad</button>
-              <div className="flex items-center gap-2">
-                <button data-testid="create-adset-save-draft" onClick={() => submit(true)} disabled={busy} className="h-9 px-4 rounded-lg border border-[color:var(--stroke)] hover:bg-white/5 text-sm transition-colors">Save as draft</button>
-                <button data-testid="create-adset-submit" onClick={() => submit(false)} disabled={busy} className="h-9 px-4 rounded-lg bg-[color:var(--brand-teal)] hover:bg-[color:var(--brand-teal-hover)] text-white text-sm inline-flex items-center gap-2 transition-colors">
-                  {busy && <Loader2 className="animate-spin" size={14} />} Submit
-                </button>
-              </div>
-            </div>
+              );
+            })}
+
+            <button
+              data-testid="create-adset-add-ad"
+              onClick={addAd}
+              className="w-full h-11 rounded-lg border border-dashed border-[color:var(--stroke)] hover:border-[color:var(--brand-teal)]/50 hover:bg-white/5 text-sm inline-flex items-center justify-center gap-2 transition-colors"
+            >
+              <Plus size={16} /> Add another ad
+            </button>
           </div>
         )}
       </div>

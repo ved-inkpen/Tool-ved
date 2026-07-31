@@ -221,15 +221,31 @@ def main():
     print(f"  editor sees {len(editor_ad_ids)} ads")
     assert len(editor_ad_ids) >= 2
 
-    # Upload video for both ads
+    # Upload video for both ads — upload stages the media, it must NOT submit
     video1 = upload(editor['token'], 'v1.mp4', b'FAKEMP4' * 200, 'video/mp4')
+    v1_ref = {'file_id': video1['file_id'], 'filename': video1['filename'], 'content_type': video1['content_type'], 'size': video1['size'], 'url': video1['url']}
     for aid in editor_ad_ids:
         must_ok(http('POST', f'/api/workflow/editor/ads/{aid}/upload', token=editor['token'], json={
-            'media_file': {'file_id': video1['file_id'], 'filename': video1['filename'], 'content_type': video1['content_type'], 'size': video1['size'], 'url': video1['url']},
+            'media_file': v1_ref,
         }), f'editor upload ad {aid}')
     print(f"  editor uploaded video for {len(editor_ad_ids)} ads")
 
-    # 10. Final Reviewer queue - should contain uploaded ads + media-ready ad
+    # Uploading alone must not push anything to the final reviewer
+    staged = must_ok(http('GET', '/api/workflow/queues/final-review', token=final['token']), 'final review queue after upload only')
+    for aid in editor_ad_ids:
+        assert aid not in [a['id'] for a in staged['ads']], f'ad {aid} reached final review on upload alone'
+    staged_ad = must_ok(http('GET', f'/api/ads/{editor_ad_ids[0]}', token=editor['token']), 'staged ad detail')
+    assert staged_ad['ad'].get('draft_media_file'), 'staged upload not persisted on the ad'
+    assert staged_ad['ad']['status'] == 'assigned_editor', 'upload should not change ad status'
+    assert len(staged_ad['versions']) == 0, 'staged upload should not create a version'
+    print('  upload staged without submitting ✓')
+
+    # Editor explicitly submits
+    for aid in editor_ad_ids:
+        must_ok(http('POST', f'/api/workflow/editor/ads/{aid}/submit', token=editor['token'], json={}), f'editor submit ad {aid}')
+    print(f"  editor submitted {len(editor_ad_ids)} ads for final review")
+
+    # 10. Final Reviewer queue - should contain submitted ads + media-ready ad
     fr_queue = must_ok(http('GET', '/api/workflow/queues/final-review', token=final['token']), 'final review queue')
     fr_ad_ids = [a['id'] for a in fr_queue['ads']]
     print(f"  final review queue has {len(fr_ad_ids)} ads")
@@ -253,6 +269,7 @@ def main():
     must_ok(http('POST', f'/api/workflow/editor/ads/{reject_ad}/upload', token=editor['token'], json={
         'media_file': {'file_id': video2['file_id'], 'filename': video2['filename'], 'content_type': video2['content_type'], 'size': video2['size'], 'url': video2['url']},
     }), 'editor re-upload')
+    must_ok(http('POST', f'/api/workflow/editor/ads/{reject_ad}/submit', token=editor['token'], json={}), 'editor re-submit')
 
     # Check versions history
     ad_detail = must_ok(http('GET', f'/api/ads/{reject_ad}', token=editor['token']), 'get ad with versions')

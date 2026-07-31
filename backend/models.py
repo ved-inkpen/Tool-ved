@@ -126,6 +126,11 @@ class Ad(BaseModel):
     reference_links: List[str] = []
     reference_media: List[FileRef] = []
     media_file: Optional[FileRef] = None
+    # editor's uploaded media that has not been submitted for final review yet
+    draft_media_file: Optional[FileRef] = None
+    headlines: List[str] = []
+    primary_texts: List[str] = []
+    # legacy single fields (backward compat) — mirror the first array entry
     headline: str = ''
     primary_text: str = ''
     status: str
@@ -179,6 +184,11 @@ class AgencyAssignInput(BaseModel):
 
 class EditorUploadInput(BaseModel):
     media_file: FileRef
+
+
+class EditorSubmitInput(BaseModel):
+    """Submit uses the previously staged upload unless media_file is supplied."""
+    media_file: Optional[FileRef] = None
 
 
 class FinalReviewDecision(BaseModel):

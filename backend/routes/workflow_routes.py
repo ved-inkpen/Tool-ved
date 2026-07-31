@@ -4,9 +4,9 @@ from database import ads_col, ad_sets_col, users_col, reviews_col, versions_col,
 from auth import get_current_user, require_roles
 from models import (
     ScriptReviewDecision, BulkScriptReviewDecision, AgencyAssignInput,
-    EditorUploadInput, FinalReviewDecision, FileRef
+    EditorUploadInput, EditorSubmitInput, FinalReviewDecision, FileRef
 )
-from utils import clean_doc, new_id, now_iso, state_entry
+from utils import clean_doc, new_id, now_iso, state_entry, normalize_ad
 from notifications import notify, notify_role
 
 router = APIRouter(prefix='/api/workflow', tags=['workflow'])
@@ -137,8 +137,8 @@ async def agency_assign(payload: AgencyAssignInput, user: dict = Depends(require
 
 
 # ---------- Editor Upload & Submit (WF4) ----------
-@router.post('/editor/ads/{ad_id}/upload')
-async def editor_upload(ad_id: str, payload: EditorUploadInput, user: dict = Depends(require_roles('video_editor', 'admin'))):
+async def _editor_ad_or_error(ad_id: str, user: dict):
+    """Fetch an ad the given editor is allowed to work on, in an uploadable state."""
     ad = await ads_col.find_one({'id': ad_id})
     if not ad:
         raise HTTPException(status_code=404, detail='Ad not found')
@@ -146,6 +146,47 @@ async def editor_upload(ad_id: str, payload: EditorUploadInput, user: dict = Dep
         raise HTTPException(status_code=403, detail='Not your ad')
     if ad['status'] not in ('assigned_editor', 'final_rejected'):
         raise HTTPException(status_code=400, detail=f"Cannot upload for ad in status '{ad['status']}'")
+    return ad
+
+
+@router.post('/editor/ads/{ad_id}/upload')
+async def editor_upload(ad_id: str, payload: EditorUploadInput, user: dict = Depends(require_roles('video_editor', 'admin'))):
+    """Attach media to the ad WITHOUT sending it to final review.
+
+    The editor stages the file here and submits it separately, so an upload is
+    never an accidental submission. Re-uploading replaces the staged file.
+    """
+    ad = await _editor_ad_or_error(ad_id, user)
+    now = now_iso()
+    await ads_col.update_one({'id': ad_id}, {'$set': {
+        'draft_media_file': payload.media_file.model_dump(),
+        'draft_media_uploaded_at': now,
+        'updated_at': now,
+    }})
+    return {'ok': True, 'draft_media_file': payload.media_file.model_dump()}
+
+
+@router.delete('/editor/ads/{ad_id}/upload')
+async def editor_discard_upload(ad_id: str, user: dict = Depends(require_roles('video_editor', 'admin'))):
+    """Discard staged media that hasn't been submitted yet."""
+    ad = await _editor_ad_or_error(ad_id, user)
+    if not ad.get('draft_media_file'):
+        raise HTTPException(status_code=400, detail='Nothing to discard')
+    await ads_col.update_one({'id': ad_id}, {'$unset': {'draft_media_file': '', 'draft_media_uploaded_at': ''}, '$set': {'updated_at': now_iso()}})
+    return {'ok': True}
+
+
+@router.post('/editor/ads/{ad_id}/submit')
+async def editor_submit(ad_id: str, payload: EditorSubmitInput = EditorSubmitInput(), user: dict = Depends(require_roles('video_editor', 'admin'))):
+    """Send the editor's uploaded media to final review.
+
+    Uses the staged upload, or a media_file passed inline for callers that want
+    to upload and submit in one step.
+    """
+    ad = await _editor_ad_or_error(ad_id, user)
+    media_file = payload.media_file.model_dump() if payload and payload.media_file else ad.get('draft_media_file')
+    if not media_file:
+        raise HTTPException(status_code=400, detail='Upload media before submitting for final review')
 
     now = now_iso()
     new_version = int(ad.get('current_version') or 0) + 1
@@ -153,19 +194,23 @@ async def editor_upload(ad_id: str, payload: EditorUploadInput, user: dict = Dep
         'id': new_id(),
         'ad_id': ad_id,
         'version_number': new_version,
-        'media_file': payload.media_file.model_dump(),
+        'media_file': media_file,
         'uploaded_by': user['id'],
         'uploaded_by_name': user.get('name'),
         'created_at': now,
     }
     await versions_col.insert_one(version_doc)
-    await ads_col.update_one({'id': ad_id}, {'$set': {
-        'media_file': payload.media_file.model_dump(),
-        'current_version': new_version,
-        'status': 'pending_final_review',
-        'latest_review_comment': None,
-        'updated_at': now,
-    }, '$push': {'state_history': state_entry('pending_final_review', user, {'version': new_version})}})
+    await ads_col.update_one({'id': ad_id}, {
+        '$set': {
+            'media_file': media_file,
+            'current_version': new_version,
+            'status': 'pending_final_review',
+            'latest_review_comment': None,
+            'updated_at': now,
+        },
+        '$unset': {'draft_media_file': '', 'draft_media_uploaded_at': ''},
+        '$push': {'state_history': state_entry('pending_final_review', user, {'version': new_version})},
+    })
     # Notify final reviewers
     await notify_role('final_reviewer', 'New media for final review', f"Ad '{ad['name']}' submitted for final review", f"/final-review")
     await _recompute_ad_set_status(ad['ad_set_id'])
@@ -214,6 +259,7 @@ async def final_review(ad_id: str, decision: FinalReviewDecision, user: dict = D
 @router.get('/queues/script-review')
 async def script_review_queue(user: dict = Depends(require_roles('script_reviewer', 'admin'))):
     ads = await ads_col.find({'status': 'pending_script_review'}, {'_id': 0}).sort('created_at', 1).to_list(1000)
+    ads = [normalize_ad(a) for a in ads]
     ad_set_ids = list({a['ad_set_id'] for a in ads})
     ad_sets = await ad_sets_col.find({'id': {'$in': ad_set_ids}}, {'_id': 0}).to_list(1000)
     return {'ads': ads, 'ad_sets': ad_sets}
@@ -225,6 +271,7 @@ async def agency_queue(user: dict = Depends(require_roles('agency_admin', 'admin
     if user['role'] == 'agency_admin':
         query['assigned_agency_id'] = user.get('agency_id')
     ads = await ads_col.find(query, {'_id': 0}).sort('updated_at', -1).to_list(1000)
+    ads = [normalize_ad(a) for a in ads]
     ad_set_ids = list({a['ad_set_id'] for a in ads})
     ad_sets = await ad_sets_col.find({'id': {'$in': ad_set_ids}}, {'_id': 0}).to_list(1000)
     # editors in this agency
@@ -239,6 +286,7 @@ async def agency_queue(user: dict = Depends(require_roles('agency_admin', 'admin
 async def editor_queue(user: dict = Depends(require_roles('video_editor', 'admin'))):
     q = {'assigned_editor_id': user['id']} if user['role'] == 'video_editor' else {'assigned_editor_id': {'$ne': None}}
     ads = await ads_col.find(q, {'_id': 0}).sort('updated_at', -1).to_list(1000)
+    ads = [normalize_ad(a) for a in ads]
     ad_set_ids = list({a['ad_set_id'] for a in ads})
     ad_sets = await ad_sets_col.find({'id': {'$in': ad_set_ids}}, {'_id': 0}).to_list(1000)
     return {'ads': ads, 'ad_sets': ad_sets}
@@ -247,6 +295,7 @@ async def editor_queue(user: dict = Depends(require_roles('video_editor', 'admin
 @router.get('/queues/final-review')
 async def final_review_queue(user: dict = Depends(require_roles('final_reviewer', 'admin'))):
     ads = await ads_col.find({'status': 'pending_final_review'}, {'_id': 0}).sort('updated_at', 1).to_list(1000)
+    ads = [normalize_ad(a) for a in ads]
     ad_set_ids = list({a['ad_set_id'] for a in ads})
     ad_sets = await ad_sets_col.find({'id': {'$in': ad_set_ids}}, {'_id': 0}).to_list(1000)
     return {'ads': ads, 'ad_sets': ad_sets}
@@ -255,6 +304,7 @@ async def final_review_queue(user: dict = Depends(require_roles('final_reviewer'
 @router.get('/queues/downloads')
 async def downloads_queue(user: dict = Depends(get_current_user)):
     ads = await ads_col.find({'status': 'approved'}, {'_id': 0}).sort('updated_at', -1).to_list(1000)
+    ads = [normalize_ad(a) for a in ads]
     ad_set_ids = list({a['ad_set_id'] for a in ads})
     ad_sets = await ad_sets_col.find({'id': {'$in': ad_set_ids}}, {'_id': 0}).to_list(1000)
     return {'ads': ads, 'ad_sets': ad_sets}

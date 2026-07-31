@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { PageHeader, PageLoader } from '@/components/Shared';
 import { AdDetailBody } from '@/pages/adset/AdSetDetail';
 import { FileUpload } from '@/components/FileUpload';
-import { ArrowLeft, Upload, Loader2, Send, Film } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Send, Film, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
@@ -55,8 +55,13 @@ export default function EditorAdDetail() {
     <div>
       <PageHeader
         title={ad.name}
-        subtitle={<span style={{ fontFamily: 'var(--font-mono)' }}>{ad.ad_code}</span>}
-        breadcrumbs="Editor / Ad"
+        subtitle={
+          <span className="inline-flex items-center gap-2 flex-wrap">
+            {detail.ad_set && <span className="inline-flex items-center gap-1.5"><Layers size={12} /> {detail.ad_set.name}</span>}
+            <span style={{ fontFamily: 'var(--font-mono)' }}>{ad.ad_set_code} · {ad.ad_code}</span>
+          </span>
+        }
+        breadcrumbs={detail.ad_set ? `Editor / ${detail.ad_set.name}` : 'Editor / Ad'}
         actions={<>
           <button data-testid="editor-ad-back-button" onClick={() => nav(-1)} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors"><ArrowLeft size={14} /> Back</button>
           {canUpload && (

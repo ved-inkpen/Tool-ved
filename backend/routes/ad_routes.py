@@ -44,8 +44,11 @@ async def get_ad(ad_id: str, user: dict = Depends(get_current_user)):
     agency = None
     if ad.get('assigned_agency_id'):
         agency = await agencies_col.find_one({'id': ad['assigned_agency_id']}, {'_id': 0})
+    # the parent set, so every role can see which campaign an ad belongs to
+    ad_set = await ad_sets_col.find_one({'id': ad['ad_set_id']}, {'_id': 0})
     return {
         'ad': normalize_ad(ad),
+        'ad_set': ad_set,
         'reviews': reviews,
         'versions': versions,
         'assigned_editor': editor,

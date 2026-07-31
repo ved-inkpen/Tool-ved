@@ -5,7 +5,7 @@ import { PageHeader, PageLoader, EmptyState } from '@/components/Shared';
 import { StatusPill } from '@/components/StatusPill';
 import { FileUpload } from '@/components/FileUpload';
 import { AdBrief } from '@/components/AdBrief';
-import { Upload, ClipboardList, Eye, CheckCircle2, Loader2, MessageSquare, ChevronDown, ChevronUp, Send, Film } from 'lucide-react';
+import { Upload, ClipboardList, Eye, CheckCircle2, Loader2, MessageSquare, ChevronDown, ChevronUp, Send, Film, Layers } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -18,7 +18,7 @@ const COLUMNS = [
 
 const isTodo = (ad) => ['assigned_editor', 'final_rejected'].includes(ad.status);
 
-function EditorAdCard({ ad, onOpen, onWork, expanded, onToggleBrief, draggable }) {
+function EditorAdCard({ ad, adSetName, onOpen, onWork, expanded, onToggleBrief, draggable }) {
   return (
     <div
       data-testid={`editor-kanban-card-${ad.id}`}
@@ -31,11 +31,19 @@ function EditorAdCard({ ad, onOpen, onWork, expanded, onToggleBrief, draggable }
       className={`group rounded-lg border border-[color:var(--stroke)] bg-[color:var(--bg-1)] p-3 hover:border-[color:var(--brand-teal)]/40 transition-colors ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
     >
       <button onClick={() => onOpen(ad.id)} className="w-full text-left">
+        {adSetName && (
+          <div className="flex items-center gap-1.5 text-[11px] text-[color:var(--text-3)] mb-1.5 min-w-0" title={`Ad set: ${adSetName}`}>
+            <Layers size={11} className="shrink-0" />
+            <span className="truncate">{adSetName}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2">
           <div className="text-sm font-medium truncate">{ad.name}</div>
           <StatusPill status={ad.status} />
         </div>
-        <div className="text-[11px] text-[color:var(--text-3)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>{ad.ad_code}</div>
+        <div className="text-[11px] text-[color:var(--text-3)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>
+          {ad.ad_set_code} · {ad.ad_code}
+        </div>
       </button>
 
       {ad.latest_review_comment && ad.status === 'final_rejected' && (
@@ -100,6 +108,8 @@ export default function EditorDashboard() {
   useEffect(() => { load(); }, [load]);
 
   const workAd = data.ads.find(a => a.id === workAdId) || null;
+  // ad_set_id -> name, so each card can show the campaign it belongs to
+  const adSetNames = Object.fromEntries((data.ad_sets || []).map(s => [s.id, s.name]));
 
   const columns = COLUMNS.map(col => ({
     ...col,
@@ -195,6 +205,7 @@ export default function EditorDashboard() {
                       <EditorAdCard
                         key={ad.id}
                         ad={ad}
+                        adSetName={adSetNames[ad.ad_set_id]}
                         draggable={isTodo(ad)}
                         expanded={expandedBrief === ad.id}
                         onToggleBrief={(id) => setExpandedBrief(prev => prev === id ? null : id)}
@@ -214,6 +225,13 @@ export default function EditorDashboard() {
         <DialogContent className="bg-[color:var(--bg-1)] border-[color:var(--stroke)] text-[color:var(--text-1)] max-w-2xl max-h-[85vh] flex flex-col gap-0">
           <DialogHeader className="shrink-0 pb-4">
             <DialogTitle style={{ fontFamily: 'var(--font-display)' }}>{workAd ? workAd.name : 'Ad'}</DialogTitle>
+            {workAd && (
+              <div className="text-xs text-[color:var(--text-3)] flex items-center gap-1.5">
+                <Layers size={11} />
+                <span>{adSetNames[workAd.ad_set_id] || 'Ad set'}</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>· {workAd.ad_code}</span>
+              </div>
+            )}
           </DialogHeader>
           {workAd && (
             <div className="space-y-5 flex-1 min-h-0 overflow-y-auto pr-1">

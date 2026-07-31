@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 from database import ad_sets_col, ads_col, users_col, agencies_col
 from auth import get_current_user, require_roles
-from models import AdSetCreate, AdInput
+from models import AdSetCreate, AdInput, AgencySetAssignInput
 from utils import clean_doc, new_id, now_iso, gen_code, state_entry, normalize_ad
 from notifications import notify_role
 
@@ -85,6 +85,52 @@ async def create_ad_set(payload: AdSetCreate, user: dict = Depends(require_roles
         'ad_set': clean_doc(ad_set_doc),
         'ads': [clean_doc(a) for a in ad_docs],
     }
+
+
+async def assign_agency_to_set(ad_set: dict, agency_id: str, user: dict) -> dict:
+    """Point a whole ad set at one agency.
+
+    Agency selection belongs to the set, not the individual ad — every ad in the
+    set is produced by the same agency. Ads keep a mirrored assigned_agency_id so
+    agency-scoped queues and permission checks stay simple.
+    """
+    agency = await agencies_col.find_one({'id': agency_id}, {'_id': 0})
+    if not agency:
+        raise HTTPException(status_code=404, detail='Agency not found')
+
+    current = ad_set.get('assigned_agency_id')
+    if current and current != agency_id:
+        # once an agency admin has handed ads to an editor, work may have started
+        busy = await ads_col.find_one({'ad_set_id': ad_set['id'], 'assigned_editor_id': {'$ne': None}})
+        if busy:
+            raise HTTPException(
+                status_code=400,
+                detail='Cannot reassign: this agency has already assigned ads to an editor',
+            )
+
+    now = now_iso()
+    await ad_sets_col.update_one({'id': ad_set['id']}, {'$set': {'assigned_agency_id': agency_id, 'updated_at': now}})
+    await ads_col.update_many({'ad_set_id': ad_set['id']}, {'$set': {'assigned_agency_id': agency_id, 'updated_at': now}})
+
+    if current != agency_id:
+        await notify_role(
+            'agency_admin',
+            'New ad set assigned to your agency',
+            f"Ad Set '{ad_set['name']}' ({ad_set['ad_set_code']}) was assigned to your agency",
+            '/agency',
+            agency_id=agency_id,
+        )
+    return agency
+
+
+@router.post('/{ad_set_id}/assign-agency')
+async def assign_agency(ad_set_id: str, payload: AgencySetAssignInput, user: dict = Depends(require_roles('script_reviewer', 'admin'))):
+    """Script reviewer routes the whole ad set to one agency."""
+    ad_set = await ad_sets_col.find_one({'id': ad_set_id})
+    if not ad_set:
+        raise HTTPException(status_code=404, detail='Ad set not found')
+    agency = await assign_agency_to_set(ad_set, payload.agency_id, user)
+    return {'ok': True, 'assigned_agency': agency}
 
 
 @router.post('/{ad_set_id}/ads')

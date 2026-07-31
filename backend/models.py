@@ -177,6 +177,11 @@ class BulkScriptReviewDecision(BaseModel):
     agency_id: Optional[str] = None
 
 
+class AgencySetAssignInput(BaseModel):
+    """Agency is chosen for a whole ad set, not per ad."""
+    agency_id: str
+
+
 class AgencyAssignInput(BaseModel):
     ad_ids: List[str]  # can be all ads in a set for bulk assign
     editor_id: str

@@ -8,6 +8,7 @@ from models import (
 )
 from utils import clean_doc, new_id, now_iso, state_entry, normalize_ad
 from notifications import notify, notify_role
+from routes.ad_set_routes import assign_agency_to_set
 
 router = APIRouter(prefix='/api/workflow', tags=['workflow'])
 
@@ -48,21 +49,25 @@ async def script_review_ad(ad_id: str, decision: ScriptReviewDecision, user: dic
 
     now = now_iso()
     if decision.action == 'approve':
-        if not decision.agency_id:
-            raise HTTPException(status_code=400, detail='agency_id required to approve & assign')
-        agency = await agencies_col.find_one({'id': decision.agency_id})
-        if not agency:
-            raise HTTPException(status_code=404, detail='Agency not found')
+        ad_set = await ad_sets_col.find_one({'id': ad['ad_set_id']})
+        if not ad_set:
+            raise HTTPException(status_code=404, detail='Ad set not found')
+        # Agency is a property of the ad set. A decision may carry one to set it
+        # (or change it) for the whole set, otherwise the set's agency is used.
+        if decision.agency_id and decision.agency_id != ad_set.get('assigned_agency_id'):
+            await assign_agency_to_set(ad_set, decision.agency_id, user)
+            ad_set['assigned_agency_id'] = decision.agency_id
+        agency_id = ad_set.get('assigned_agency_id')
+        if not agency_id:
+            raise HTTPException(status_code=400, detail='Assign this ad set to an agency before approving')
         await ads_col.update_one({'id': ad_id}, {'$set': {
             'status': 'assigned_agency',
-            'assigned_agency_id': decision.agency_id,
+            'assigned_agency_id': agency_id,
             'latest_review_comment': decision.comments or None,
             'updated_at': now,
-        }, '$push': {'state_history': state_entry('assigned_agency', user, {'agency_id': decision.agency_id})}})
-        # Also set ad set assigned agency (first assignment) if not set
-        await ad_sets_col.update_one({'id': ad['ad_set_id'], 'assigned_agency_id': None}, {'$set': {'assigned_agency_id': decision.agency_id}})
+        }, '$push': {'state_history': state_entry('assigned_agency', user, {'agency_id': agency_id})}})
         # Notify agency admins
-        await notify_role('agency_admin', 'New ad assigned to your agency', f"Ad '{ad['name']}' from Ad Set {ad['ad_set_code']} was assigned to your agency", f"/agency", agency_id=decision.agency_id)
+        await notify_role('agency_admin', 'New ad assigned to your agency', f"Ad '{ad['name']}' from Ad Set {ad['ad_set_code']} is ready to produce", f"/agency", agency_id=agency_id)
         review_action = 'approve'
     else:
         await ads_col.update_one({'id': ad_id}, {'$set': {

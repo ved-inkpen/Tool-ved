@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { PageHeader, PageLoader, EmptyState } from '@/components/Shared';
 import { StatusPill } from '@/components/StatusPill';
 import { toast } from 'sonner';
-import { Loader2, UsersRound, Zap } from 'lucide-react';
+import { Loader2, UsersRound, Zap, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 export default function AgencyDashboard() {
+  const nav = useNavigate();
   const [data, setData] = useState({ ads: [], ad_sets: [], editors: [] });
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -68,21 +70,34 @@ export default function AgencyDashboard() {
           <div className="space-y-6">
             {groups.map(({ set, ads }) => (
               <div key={set.id} className="card-elevated">
-                <div className="p-4 border-b border-[color:var(--stroke)] flex items-center justify-between">
-                  <div>
+                <div className="p-4 border-b border-[color:var(--stroke)] flex items-center justify-between gap-3 flex-wrap">
+                  <button
+                    data-testid={`agency-open-adset-${set.id}`}
+                    onClick={() => nav(`/agency/ad-sets/${set.id}`)}
+                    className="text-left group"
+                  >
                     <div className="flex items-center gap-2">
-                      <div className="text-base font-semibold" style={{ fontFamily: 'var(--font-display)' }}>{set.name}</div>
+                      <div className="text-base font-semibold group-hover:text-[color:var(--brand-teal)] transition-colors" style={{ fontFamily: 'var(--font-display)' }}>{set.name}</div>
                       <StatusPill status={set.status} />
                     </div>
                     <div className="text-xs text-[color:var(--text-3)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>{set.ad_set_code}</div>
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-[color:var(--text-3)] inline-flex items-center gap-1"><UsersRound size={14} /> {data.editors.length} editors</div>
+                    <button
+                      data-testid={`agency-view-adset-${set.id}`}
+                      onClick={() => nav(`/agency/ad-sets/${set.id}`)}
+                      className="h-8 px-3 rounded-lg border border-[color:var(--stroke)] hover:bg-white/5 hover:border-[color:var(--brand-teal)]/40 text-xs inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      <Eye size={12} /> View details
+                    </button>
                   </div>
-                  <div className="text-xs text-[color:var(--text-3)] inline-flex items-center gap-1"><UsersRound size={14} /> {data.editors.length} editors</div>
                 </div>
                 <div className="divide-y divide-[color:var(--stroke)]">
                   {ads.map(a => (
                     <div key={a.id} className="p-4 flex items-center gap-3 flex-wrap queue-row" data-testid={`agency-ad-row-${a.id}`}>
                       <input type="checkbox" checked={selectedIds.includes(a.id)} onChange={() => toggleSelect(a.id)} data-testid={`agency-ad-checkbox-${a.id}`} className="h-4 w-4 accent-[color:var(--brand-teal)]" />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => nav(`/agency/ad-sets/${set.id}`)}>
                         <div className="flex items-center gap-2">
                           <div className="text-sm font-medium truncate">{a.name}</div>
                           <StatusPill status={a.status} />

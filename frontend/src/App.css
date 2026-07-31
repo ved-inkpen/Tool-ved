@@ -1,34 +1,17 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Global app styles - dark studio ops */
+.app-root { min-height: 100vh; background: var(--bg-0); color: var(--text-1); }
+
+/* Sticky page header used on detail pages */
+.page-header { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(10px); background: rgba(10, 15, 20, 0.75); border-bottom: 1px solid var(--stroke); }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; }
+
+.card-elevated {
+  background: var(--bg-1);
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 10px 30px rgba(0,0,0,0.35);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
-}
-
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
+.queue-row { transition: background-color 160ms ease, border-color 160ms ease; }
+.queue-row:hover { background: rgba(255,255,255,0.03); }

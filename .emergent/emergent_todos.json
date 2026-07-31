@@ -17,27 +17,27 @@
   },
   {
     "content": "Phase 2: Design guidelines via design_agent",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Frontend - Auth, App shell, dark theme, notifications",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Frontend - Admin dashboard (users, agencies, invites)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Frontend - Creator, Script Reviewer, Agency Admin views",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Frontend - Editor, Final Reviewer, Download views",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: End-to-end testing via testing_agent_v3",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 2: Fix all issues found in testing",

@@ -115,16 +115,23 @@ export default function AgencyAdSetDetail() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    let s;
     try {
-      const [{ data: s }, { data: eds }] = await Promise.all([
-        api.get(`/ad-sets/${id}`),
-        api.get('/agency/editors'),
-      ]);
+      ({ data: s } = await api.get(`/ad-sets/${id}`));
       setData(s);
-      setEditors(eds);
       setSelectedAdId(prev => prev || (s.ads[0] && s.ads[0].id));
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to load ad set');
+      return;
+    }
+    // Scope to this set's agency: a studio admin has no agency of their own and
+    // would otherwise get every agency's editors in the assign dropdown.
+    try {
+      const q = s.ad_set.assigned_agency_id ? `?agency_id=${s.ad_set.assigned_agency_id}` : '';
+      setEditors((await api.get(`/agency/editors${q}`)).data);
+    } catch (e) {
+      // the ad set itself still renders; only the assign dropdown is affected
+      setEditors([]);
     }
   }, [id]);
   useEffect(() => { load(); }, [load]);

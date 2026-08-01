@@ -158,13 +158,15 @@ AGENCY_ADMIN = require_roles('agency_admin', 'admin')
 IN_FLIGHT = ('assigned_editor', 'final_rejected', 'pending_final_review')
 
 
-async def _agency_scope(user: dict, agency_id: str = None) -> str:
-    """The agency an agency_admin may act on. Admins may target any agency."""
+async def _agency_scope(user: dict, agency_id: str = None):
+    """The agency being acted on.
+
+    Agency admins are pinned to their own. Studio admins have no agency of their
+    own, so they may target any via agency_id — or none at all, which means
+    every agency.
+    """
     if user['role'] == 'admin':
-        target = agency_id or user.get('agency_id')
-        if not target:
-            raise HTTPException(status_code=400, detail='agency_id is required for admins')
-        return target
+        return agency_id or user.get('agency_id')
     scope = user.get('agency_id')
     if not scope:
         raise HTTPException(status_code=400, detail='Your account is not attached to an agency')
@@ -173,11 +175,12 @@ async def _agency_scope(user: dict, agency_id: str = None) -> str:
     return scope
 
 
-async def _editor_in_agency(editor_id: str, scope: str) -> dict:
+async def _editor_in_agency(editor_id: str, scope) -> dict:
     editor = await users_col.find_one({'id': editor_id}, {'_id': 0, 'password_hash': 0})
     if not editor or editor.get('role') != 'video_editor':
         raise HTTPException(status_code=404, detail='Editor not found')
-    if editor.get('agency_id') != scope:
+    # scope None means an unscoped studio admin, who may act on any editor
+    if scope is not None and editor.get('agency_id') != scope:
         raise HTTPException(status_code=403, detail='That editor belongs to another agency')
     return editor
 
@@ -186,7 +189,9 @@ async def _editor_in_agency(editor_id: str, scope: str) -> dict:
 async def list_agency_editors(agency_id: str = None, include_inactive: bool = False, user: dict = Depends(AGENCY_ADMIN)):
     """Video editors belonging to the caller's agency, with their current workload."""
     scope = await _agency_scope(user, agency_id)
-    query = {'role': 'video_editor', 'agency_id': scope}
+    query = {'role': 'video_editor'}
+    if scope is not None:
+        query['agency_id'] = scope
     if not include_inactive:
         query['active'] = True
     editors = await users_col.find(query, {'_id': 0, 'password_hash': 0}).sort('name', 1).to_list(1000)
@@ -200,6 +205,8 @@ async def list_agency_editors(agency_id: str = None, include_inactive: bool = Fa
 async def create_agency_editor(payload: AgencyEditorCreate, agency_id: str = None, user: dict = Depends(AGENCY_ADMIN)):
     """Add a video editor to the caller's agency."""
     scope = await _agency_scope(user, agency_id)
+    if scope is None:
+        raise HTTPException(status_code=400, detail='Pass agency_id to say which agency this editor joins')
     email = payload.email.lower()
     if await users_col.find_one({'email': email}):
         raise HTTPException(status_code=400, detail='Email already exists')

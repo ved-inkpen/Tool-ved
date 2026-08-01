@@ -1,0 +1,41 @@
+# Temporary full-stack run. Ports are deliberately offset from the native dev
+# setup (3000 / 8001 / 27017) so both can run side by side.
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    ports:
+      - "8101:8001"
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: marketing_studio
+      CORS_ORIGINS: http://localhost:3100
+      # Slack links must be absolute and point at the published frontend port
+      APP_BASE_URL: http://localhost:3100
+      # throwaway value for local use only — set a real secret anywhere real
+      JWT_SECRET: local_docker_only_not_a_real_secret
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # baked into the bundle, so it points at the host-published backend port
+        REACT_APP_BACKEND_URL: http://localhost:8101
+    ports:
+      - "3100:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+  uploads:

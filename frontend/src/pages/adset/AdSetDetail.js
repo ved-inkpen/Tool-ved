@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, fileUrl } from '@/lib/api';
 import { PageHeader, PageLoader } from '@/components/Shared';
 import { StatusPill } from '@/components/StatusPill';
@@ -17,6 +17,7 @@ import { CopyVariants, adHeadlines, adPrimaryTexts } from '@/components/AdCopy';
 export default function AdSetDetail() {
   const { id } = useParams();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,12 +37,17 @@ export default function AdSetDetail() {
     try {
       const { data } = await api.get(`/ad-sets/${id}`);
       setData(data);
-      if (data.ads && data.ads.length > 0) setSelectedAdId(prev => prev || data.ads[0].id);
+      if (data.ads && data.ads.length > 0) {
+        // ?ad=<id> deep-links to one ad, e.g. from a comment notification
+        const wanted = searchParams.get('ad');
+        const target = data.ads.find(a => a.id === wanted);
+        setSelectedAdId(prev => (target ? target.id : prev || data.ads[0].id));
+      }
     } catch (e) {
       toast.error(e?.response?.data?.detail || 'Failed to load ad set');
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [id, searchParams]);
 
   useEffect(() => {
     if (!selectedAdId) return;

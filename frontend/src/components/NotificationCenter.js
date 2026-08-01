@@ -75,7 +75,12 @@ export function NotificationCenter() {
                 className={`p-3 hover:bg-white/[0.03] transition-colors cursor-pointer ${!n.read ? 'bg-white/[0.02]' : ''}`}
                 onClick={() => {
                   if (!n.read) markRead(n.id);
-                  if (n.link) { setOpen(false); navigate(n.link); }
+                  // older rows stored only the ad set; rebuild from ad_id so
+                  // they still land on the right ad
+                  const target = n.ad_id && n.ad_set_id
+                    ? `/ad-sets/${n.ad_set_id}?ad=${n.ad_id}`
+                    : n.link;
+                  if (target) { setOpen(false); navigate(target); }
                 }}
               >
                 <div className="flex items-start gap-2">

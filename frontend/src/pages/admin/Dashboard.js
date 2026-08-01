@@ -170,7 +170,7 @@ export default function AdminDashboard() {
   /** Opening a question is "viewing" it, so it stops being unread. */
   const openQuestion = async (n) => {
     if (!n.read) { try { await api.post(`/notifications/${n.id}/read`); } catch (e) { /* still navigate */ } }
-    nav(n.link || `/ad-sets/${n.ad_set_id}`);
+    nav(n.ad_id && n.ad_set_id ? `/ad-sets/${n.ad_set_id}?ad=${n.ad_id}` : n.link);
   };
 
   const markAllRead = async () => {

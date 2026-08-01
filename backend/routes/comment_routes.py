@@ -39,7 +39,14 @@ async def _notify_participants(ad: dict, actor: dict, comment_text: str):
                 receivers.add(admin['id'])
     preview = comment_text[:80] + ('…' if len(comment_text) > 80 else '')
     for uid in receivers:
-        await notify(uid, f"New comment on '{ad.get('name')}'", f"{actor.get('name')}: {preview}", f"/ad-sets/{ad['ad_set_id']}")
+        await notify(
+            uid,
+            f"New comment on '{ad.get('name')}'",
+            f"{actor.get('name')}: {preview}",
+            f"/ad-sets/{ad['ad_set_id']}?ad={ad['id']}",
+            ad_id=ad['id'],
+            ad_set_id=ad.get('ad_set_id'),
+        )
 
 
 async def _notify_admins_of_question(ad: dict, actor: dict, comment: dict):
@@ -58,7 +65,7 @@ async def _notify_admins_of_question(ad: dict, actor: dict, comment: dict):
         'admin',
         f"Question on '{ad.get('name')}'",
         f"{actor.get('name')}: {preview}",
-        f"/ad-sets/{ad['ad_set_id']}",
+        f"/ad-sets/{ad['ad_set_id']}?ad={ad['id']}",
         kind='comment_question',
         comment_id=comment['id'],
         ad_id=ad['id'],

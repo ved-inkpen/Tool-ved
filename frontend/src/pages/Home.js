@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { PageLoader } from '@/components/Shared';
 
 const ROUTE_BY_ROLE = {
-  admin: '/admin/users',
+  admin: '/admin',
   creator: '/creator',
   script_reviewer: '/script-review',
   agency_admin: '/agency',

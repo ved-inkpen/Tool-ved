@@ -22,7 +22,7 @@ from routes.notification_routes import router as notifications_router
 from routes.comment_routes import router as comment_router
 from routes.analytics_routes import router as analytics_router
 
-app = FastAPI(title='Marketing Studio API', version='1.0.0')
+app = FastAPI(title='Marco API', version='1.0.0')
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,7 +37,7 @@ app.add_middleware(
 
 @app.get('/api/')
 async def root():
-    return {'app': 'Marketing Studio', 'status': 'ok'}
+    return {'app': 'Marco', 'status': 'ok'}
 
 
 @app.get('/api/health')

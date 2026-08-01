@@ -42,7 +42,7 @@ def build_payload(title: str, message: str, link: str = None) -> dict:
     text = f"*{title}*\n{message}"
     if link:
         url = link if link.startswith('http') else f"{app_base_url()}{link}"
-        text += f"\n<{url}|Open in Marketing Studio>"
+        text += f"\n<{url}|Open in Marco>"
     return {'text': text}
 
 

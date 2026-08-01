@@ -1,4 +1,4 @@
-"""End-to-end test for Marketing Studio core workflows.
+"""End-to-end test for Marco core workflows.
 
 Covers:
 - Login for all roles
@@ -54,7 +54,7 @@ def upload(token, filename, content, content_type='image/png'):
 
 
 def main():
-    print('== Marketing Studio E2E Test ==')
+    print('== Marco E2E Test ==')
 
     # 1. Login all roles
     tokens = {}

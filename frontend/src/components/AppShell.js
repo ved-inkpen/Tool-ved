@@ -114,8 +114,8 @@ function Sidebar({ user, onNavigate }) {
           <Sparkles size={18} />
         </div>
         <div>
-          <div className="text-[15px] font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Marketing Studio</div>
-          <div className="text-[11px] text-[color:var(--text-3)] tracking-wide uppercase" style={{ fontFamily: 'var(--font-mono)' }}>Ops Console</div>
+          <div className="text-[15px] font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Marco</div>
+          <div className="text-[11px] text-[color:var(--text-3)] tracking-wide uppercase" style={{ fontFamily: 'var(--font-mono)' }}>Marketing Console</div>
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin">

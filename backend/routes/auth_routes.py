@@ -89,7 +89,7 @@ async def test_slack(user: dict = Depends(get_current_user)):
     if not slack_mod.is_valid_webhook(url):
         raise HTTPException(status_code=400, detail='Connect a Slack webhook first')
     ok, detail = await slack_mod.send(url, slack_mod.build_payload(
-        'Marketing Studio is connected',
+        'Marco is connected',
         f"Hi {user.get('name')} — notifications for your account will arrive here.",
         '/',
     ))

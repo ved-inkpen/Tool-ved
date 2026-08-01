@@ -242,3 +242,18 @@ code { font-family: var(--font-mono); }
   /* keep the stars, just stop them pulsing */
   .aurora-star { animation: none; opacity: 0.45; }
 }
+
+/* sign-in card rises in once, so the panel does not just appear */
+.login-card { animation: login-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes login-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-card { animation: none; }
+}
+
+/* the sign-in side gets the same scene at a whisper, so the page reads as one */
+.aurora-dim { opacity: 0.28; }
+.aurora-dim .aurora-wave { filter: blur(80px); }
+.aurora-dim .aurora-star { box-shadow: none; }

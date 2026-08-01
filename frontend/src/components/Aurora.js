@@ -30,9 +30,9 @@ const STARS = Array.from({ length: 54 }, (_, i) => {
   };
 });
 
-export function Aurora() {
+export function Aurora({ dim = false }) {
   return (
-    <div className="aurora" aria-hidden="true" data-testid="aurora">
+    <div className={`aurora${dim ? ' aurora-dim' : ''}`} aria-hidden="true" data-testid={dim ? 'aurora-dim' : 'aurora'}>
       <div className="aurora-wave aurora-wave-a" />
       <div className="aurora-wave aurora-wave-b" />
       <div className="aurora-blob aurora-blob-a" />

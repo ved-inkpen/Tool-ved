@@ -135,12 +135,12 @@ code { font-family: var(--font-mono); }
   position: absolute;
   inset: -20%;
   background-size: 220% 220%;
-  filter: blur(60px);
+  filter: blur(90px);
   will-change: background-position;
 }
 
 .aurora-wave-a {
-  opacity: 0.75;
+  opacity: 0.26;
   background-image: linear-gradient(
     115deg,
     transparent 12%,
@@ -153,7 +153,7 @@ code { font-family: var(--font-mono); }
 }
 
 .aurora-wave-b {
-  opacity: 0.55;
+  opacity: 0.18;
   background-image: linear-gradient(
     245deg,
     transparent 15%,
@@ -168,8 +168,8 @@ code { font-family: var(--font-mono); }
 .aurora-blob {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(70px);
-  opacity: 0.55;
+  filter: blur(100px);
+  opacity: 0.20;
   will-change: transform;
 }
 
@@ -216,14 +216,57 @@ code { font-family: var(--font-mono); }
   66%      { transform: translate3d(-7%, 7%, 0) scale(1); }
 }
 
+/* Both copies span the whole page and their masks are exact complements, so at
+   every x one is fading out by as much as the other fades in. That keeps the
+   total brightness flat across the page — the earlier per-panel masks each
+   bottomed out near the middle, which is what left a dark band there. */
+@media (min-width: 1024px) {
+  .aurora:not(.aurora-dim) {
+    -webkit-mask-image: linear-gradient(90deg, #000 15%, transparent 85%);
+            mask-image: linear-gradient(90deg, #000 15%, transparent 85%);
+  }
+  .aurora-dim {
+    -webkit-mask-image: linear-gradient(90deg, transparent 15%, #000 85%);
+            mask-image: linear-gradient(90deg, transparent 15%, #000 85%);
+  }
+}
+
+/* single column: no left/right to travel between, so drop the hue copy */
+@media (max-width: 1023px) {
+  .aurora-dim { display: none; }
+}
+
 /* stars sit above the colour, below the content */
-.aurora-stars { position: absolute; inset: 0; }
+.aurora-stars { position: absolute; inset: 0; overflow: hidden; }
+
+/* Each star rides a wrapper that carries it diagonally across the panel, so the
+   field reads as travelling through space rather than sitting on glass. The
+   wrapper also fades the star in and out at the ends of its run, which is what
+   hides the loop — a star is invisible at the moment it snaps back to the
+   start. Drift lives on the wrapper and the twinkle on the dot inside, so the
+   two opacities multiply instead of fighting over one property. */
+.aurora-star-drift {
+  position: absolute;
+  animation-name: aurora-star-travel;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  will-change: transform, opacity;
+}
+
+@keyframes aurora-star-travel {
+  0%   { transform: translate3d(9vw, -9vh, 0); opacity: 0; }
+  14%  { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { transform: translate3d(-9vw, 9vh, 0); opacity: 0; }
+}
 
 .aurora-star {
   position: absolute;
+  top: 0;
+  left: 0;
   border-radius: 9999px;
   background: #fff;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 7px rgba(255, 255, 255, 0.7);
   opacity: 0;
   animation-name: aurora-twinkle;
   animation-iteration-count: infinite;
@@ -232,15 +275,8 @@ code { font-family: var(--font-mono); }
 }
 
 @keyframes aurora-twinkle {
-  0%, 100% { opacity: 0.06; transform: scale(0.75); }
+  0%, 100% { opacity: 0.12; transform: scale(0.75); }
   50%      { opacity: var(--star-peak, 0.7); transform: scale(1.2); }
-}
-
-/* Motion is decoration here — hold everything still when asked. */
-@media (prefers-reduced-motion: reduce) {
-  .aurora-wave, .aurora-blob { animation: none; }
-  /* keep the stars, just stop them pulsing */
-  .aurora-star { animation: none; opacity: 0.45; }
 }
 
 /* sign-in card rises in once, so the panel does not just appear */
@@ -253,7 +289,28 @@ code { font-family: var(--font-mono); }
   .login-card { animation: none; }
 }
 
-/* the sign-in side gets the same scene at a whisper, so the page reads as one */
-.aurora-dim { opacity: 0.28; }
-.aurora-dim .aurora-wave { filter: blur(80px); }
-.aurora-dim .aurora-star { box-shadow: none; }
+/* The sign-in side runs the same scene, but its hue drifts away from the teal
+   of the left panel as the waves travel across — so the colour visibly changes
+   from one side of the page to the other, and keeps changing. */
+.aurora-dim {
+  animation: aurora-hue 30s linear infinite;
+}
+/* Same intensities as the base copy — only the hue differs. Anything else here
+   would show up as a brightness ramp across the page. */
+
+/* Stops short of ~120deg on purpose: past that the teal turns a warm plum that
+   muddies the card sitting on top of it. This range stays cyan -> indigo -> violet. */
+@keyframes aurora-hue {
+  0%   { filter: hue-rotate(28deg)  saturate(1.15); }
+  50%  { filter: hue-rotate(112deg) saturate(1.3); }
+  100% { filter: hue-rotate(28deg)  saturate(1.15); }
+}
+
+/* Motion is decoration here — hold everything still when asked. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-wave, .aurora-blob { animation: none; }
+  /* keep the stars, just stop them pulsing and travelling */
+  .aurora-star { animation: none; opacity: 0.45; }
+  .aurora-star-drift { animation: none; transform: none; opacity: 1; }
+  .aurora-dim { animation: none; filter: hue-rotate(70deg) saturate(1.2); }
+}

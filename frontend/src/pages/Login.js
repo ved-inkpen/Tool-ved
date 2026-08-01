@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Lottie from 'lottie-react';
 import rocketLaunch from '@/assets/rocket-launch.json';
-import { Aurora } from '@/components/Aurora';
+import { Aurora, AuroraStars } from '@/components/Aurora';
 import { Sparkles, Loader2, Mail, Lock, Eye, EyeOff, ArrowRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,10 +43,16 @@ export default function LoginPage() {
   const fill = (a) => { setEmail(a.email); setPassword(a.password); };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-[color:var(--bg-0)]">
-      <div className="hidden lg:flex flex-col justify-between p-10 relative overflow-hidden grain-overlay"
-           style={{ background: 'var(--bg-1)' }}>
-        <Aurora />
+    <div className="relative min-h-screen overflow-hidden bg-[color:var(--bg-0)]">
+      {/* One backdrop spanning the whole page. Two hue-offset copies cross-fade
+          left to right and a single star field sits over both, so the colour
+          shifts across the page without a seam between the panels. */}
+      <Aurora />
+      <Aurora dim />
+      <AuroraStars />
+
+      <div className="relative min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      <div className="hidden lg:flex flex-col justify-between p-10 relative grain-overlay">
         <div className="relative flex items-center gap-2">
           <div className="h-10 w-10 rounded-xl grid place-items-center bg-gradient-to-br from-[var(--brand-teal)] to-[#0EA5B5] text-white"><Sparkles size={18} /></div>
           <div className="font-semibold text-lg" style={{ fontFamily: 'var(--font-display)' }}>Marco</div>
@@ -69,10 +75,7 @@ export default function LoginPage() {
         <div className="relative text-[11px] text-[color:var(--text-3)]" style={{ fontFamily: 'var(--font-mono)' }}>v1.0 · Studio Ops</div>
       </div>
 
-      <div className="relative flex items-center justify-center p-6 lg:p-10 overflow-hidden">
-        {/* the same scene continues here, dimmed right down so the form stays
-            the focus and the two halves read as one page */}
-        <Aurora dim />
+      <div className="relative flex items-center justify-center p-6 lg:p-10">
         {/* soft halo so the card reads as lit rather than pasted on */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid place-items-center">
           <div className="h-[34rem] w-[34rem] rounded-full bg-[color:var(--brand-teal)]/[0.07] blur-[110px]" />
@@ -174,6 +177,7 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

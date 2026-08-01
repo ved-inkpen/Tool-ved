@@ -119,54 +119,87 @@ code { font-family: var(--font-mono); }
 }
 
 /* ---------- Sign-in aurora ----------------------------------------------
-   Drifting colour blobs plus a cursor-tracking highlight. Animates transform
-   and opacity only; the cursor layer reads --mx/--my set from a rAF loop. */
+   Gradient sheets sweeping across each other like slow waves, over a few
+   drifting blobs for depth. Pure CSS; animates transform, opacity and
+   background-position only. */
 .aurora {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  --mx: 50%;
-  --my: 50%;
+}
+
+/* the waves: oversized gradients slid back and forth, so the crests drift
+   through each other and never quite repeat */
+.aurora-wave {
+  position: absolute;
+  inset: -20%;
+  background-size: 220% 220%;
+  filter: blur(60px);
+  will-change: background-position;
+}
+
+.aurora-wave-a {
+  opacity: 0.75;
+  background-image: linear-gradient(
+    115deg,
+    transparent 12%,
+    rgba(20, 184, 166, 0.55) 32%,
+    transparent 52%,
+    rgba(34, 211, 238, 0.42) 72%,
+    transparent 90%
+  );
+  animation: aurora-sweep-a 18s ease-in-out infinite;
+}
+
+.aurora-wave-b {
+  opacity: 0.55;
+  background-image: linear-gradient(
+    245deg,
+    transparent 15%,
+    rgba(129, 140, 248, 0.40) 38%,
+    transparent 58%,
+    rgba(45, 212, 191, 0.38) 80%,
+    transparent 95%
+  );
+  animation: aurora-sweep-b 26s ease-in-out infinite;
 }
 
 .aurora-blob {
   position: absolute;
   border-radius: 9999px;
   filter: blur(70px);
-  opacity: 0.72;
+  opacity: 0.55;
   will-change: transform;
 }
 
 .aurora-blob-a {
-  width: 46rem; height: 46rem; top: -18rem; left: -14rem;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.85), transparent 68%);
+  width: 42rem; height: 42rem; top: -16rem; left: -12rem;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.7), transparent 68%);
   animation: aurora-drift-a 22s ease-in-out infinite;
 }
 
 .aurora-blob-b {
-  width: 38rem; height: 38rem; bottom: -16rem; right: -12rem;
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.62), transparent 68%);
+  width: 36rem; height: 36rem; bottom: -14rem; right: -10rem;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.5), transparent 68%);
   animation: aurora-drift-b 28s ease-in-out infinite;
 }
 
 .aurora-blob-c {
-  width: 30rem; height: 30rem; top: 38%; left: 30%;
-  background: radial-gradient(circle, rgba(129, 140, 248, 0.45), transparent 68%);
+  width: 28rem; height: 28rem; top: 40%; left: 28%;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.35), transparent 68%);
   animation: aurora-drift-c 34s ease-in-out infinite;
 }
 
-/* follows the pointer with a slight lag */
-.aurora-cursor {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    28rem 28rem at var(--mx) var(--my),
-    rgba(45, 212, 191, 0.30),
-    rgba(45, 212, 191, 0.10) 35%,
-    transparent 65%
-  );
-  transition: opacity 400ms ease;
+@keyframes aurora-sweep-a {
+  0%   { background-position:   0% 50%; }
+  50%  { background-position: 100% 55%; }
+  100% { background-position:   0% 50%; }
+}
+@keyframes aurora-sweep-b {
+  0%   { background-position: 100% 50%; }
+  50%  { background-position:   0% 45%; }
+  100% { background-position: 100% 50%; }
 }
 
 @keyframes aurora-drift-a {
@@ -183,8 +216,29 @@ code { font-family: var(--font-mono); }
   66%      { transform: translate3d(-7%, 7%, 0) scale(1); }
 }
 
+/* stars sit above the colour, below the content */
+.aurora-stars { position: absolute; inset: 0; }
+
+.aurora-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  animation-name: aurora-twinkle;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  will-change: opacity, transform;
+}
+
+@keyframes aurora-twinkle {
+  0%, 100% { opacity: 0.06; transform: scale(0.75); }
+  50%      { opacity: var(--star-peak, 0.7); transform: scale(1.2); }
+}
+
 /* Motion is decoration here — hold everything still when asked. */
 @media (prefers-reduced-motion: reduce) {
-  .aurora-blob { animation: none; }
-  .aurora-cursor { display: none; }
+  .aurora-wave, .aurora-blob { animation: none; }
+  /* keep the stars, just stop them pulsing */
+  .aurora-star { animation: none; opacity: 0.45; }
 }

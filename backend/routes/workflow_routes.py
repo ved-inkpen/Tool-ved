@@ -1,4 +1,9 @@
+import io
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
 from typing import Optional
 from database import ads_col, ad_sets_col, users_col, reviews_col, versions_col, agencies_col
 from auth import get_current_user, require_roles
@@ -310,6 +315,71 @@ async def final_review_queue(user: dict = Depends(require_roles('final_reviewer'
     ad_set_ids = list({a['ad_set_id'] for a in ads})
     ad_sets = await ad_sets_col.find({'id': {'$in': ad_set_ids}}, {'_id': 0}).to_list(1000)
     return {'ads': ads, 'ad_sets': ad_sets}
+
+
+@router.get('/queues/downloads/export')
+async def export_approved_ads(ad_set_id: Optional[str] = None, user: dict = Depends(require_roles('ad_poster', 'admin'))):
+    """Approved ads as a .xlsx the poster can work from — one row per video.
+
+    Copy variants get their own columns rather than being crammed into one cell,
+    so each headline and body can be copied straight into an ad platform.
+    """
+    query = {'status': 'approved'}
+    if ad_set_id:
+        query['ad_set_id'] = ad_set_id
+    ads = await ads_col.find(query, {'_id': 0}).sort('updated_at', -1).to_list(5000)
+    ads = [normalize_ad(a) for a in ads]
+    sets = {s['id']: s for s in await ad_sets_col.find(
+        {'id': {'$in': list({a['ad_set_id'] for a in ads})}}, {'_id': 0}).to_list(1000)}
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Approved ads'
+
+    headers = (
+        ['Ad Set', 'Ad Set ID', 'Ad Name', 'Ad ID', 'Version']
+        + [f'Headline {i}' for i in range(1, 6)]
+        + [f'Primary Text {i}' for i in range(1, 6)]
+        + ['Custom Listing Link', 'Deeplink', 'Media File', 'Media URL', 'Approved On']
+    )
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(vertical='center')
+
+    for a in ads:
+        s = sets.get(a['ad_set_id'], {})
+        heads = (a.get('headlines') or [])[:5]
+        bodies = (a.get('primary_texts') or [])[:5]
+        media = a.get('media_file') or {}
+        ws.append(
+            [s.get('name', ''), a.get('ad_set_code', ''), a.get('name', ''), a.get('ad_code', ''),
+             f"v{a.get('current_version') or 1}"]
+            + [heads[i] if i < len(heads) else '' for i in range(5)]
+            + [bodies[i] if i < len(bodies) else '' for i in range(5)]
+            + [a.get('custom_listing_link', ''), a.get('deeplink', ''),
+               media.get('filename', ''),
+               f"/api/uploads/{media['file_id']}/download" if media.get('file_id') else '',
+               a.get('updated_at', '')]
+        )
+
+    widths = [24, 14, 22, 14, 8] + [28] * 5 + [34] * 5 + [46, 30, 26, 42, 24]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = 'A2'
+    if ads:
+        ws.auto_filter.ref = f'A1:{get_column_letter(len(headers))}{len(ads) + 1}'
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    label = (sets.get(ad_set_id, {}).get('ad_set_code') or 'all') if ad_set_id else 'all'
+    name = f"approved-ads-{label}-{now_iso()[:10]}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="{name}"'},
+    )
 
 
 @router.get('/queues/downloads')

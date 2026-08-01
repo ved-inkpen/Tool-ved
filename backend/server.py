@@ -30,6 +30,8 @@ app.add_middleware(
     allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=['*'],
     allow_headers=['*'],
+    # without this the browser hides the header, so downloads lose their filename
+    expose_headers=['Content-Disposition'],
 )
 
 

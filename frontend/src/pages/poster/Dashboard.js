@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, fileUrl, downloadUrl } from '@/lib/api';
 import { PageHeader, PageLoader, EmptyState } from '@/components/Shared';
-import { Download, Copy, PlayCircle, ArrowLeft, Link2, Smartphone, Hash, Megaphone } from 'lucide-react';
+import { Download, Copy, PlayCircle, ArrowLeft, Link2, Smartphone, Megaphone, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -65,6 +65,7 @@ export default function AdPosterDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedSetId, setSelectedSetId] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => { (async () => {
     setLoading(true);
@@ -72,6 +73,25 @@ export default function AdPosterDashboard() {
     catch (e) { toast.error(e?.response?.data?.detail || 'Failed to load approved ads'); }
     finally { setLoading(false); }
   })(); }, []);
+
+  /** The export needs the auth header, so fetch it as a blob rather than linking. */
+  const exportXlsx = async (adSetId) => {
+    setExporting(true);
+    try {
+      const res = await api.get(`/workflow/queues/downloads/export${adSetId ? `?ad_set_id=${adSetId}` : ''}`,
+        { responseType: 'blob' });
+      const name = (res.headers['content-disposition'] || '').match(/filename="?([^"]+)"?/)?.[1]
+        || 'approved-ads.xlsx';
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Export downloaded');
+    } catch (e) {
+      toast.error('Export failed');
+    } finally { setExporting(false); }
+  };
 
   const copy = async (text, label) => {
     try { await navigator.clipboard.writeText(text); toast.success(`${label} copied`); }
@@ -92,11 +112,26 @@ export default function AdPosterDashboard() {
           ? `${current.set.ad_set_code} · ${current.ads.length} approved video${current.ads.length === 1 ? '' : 's'}`
           : 'Approved videos with their copy, links and IDs.'}
         breadcrumbs={current ? 'Ad Posting' : undefined}
-        actions={current && (
-          <button data-testid="poster-back" onClick={() => setSelectedSetId(null)} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors">
-            <ArrowLeft size={14} /> All ad sets
-          </button>
-        )}
+        actions={
+          <>
+            {current && (
+              <button data-testid="poster-back" onClick={() => setSelectedSetId(null)} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors">
+                <ArrowLeft size={14} /> All ad sets
+              </button>
+            )}
+            {data.ads.length > 0 && (
+              <button
+                data-testid="poster-export"
+                onClick={() => exportXlsx(current ? current.set.id : null)}
+                disabled={exporting}
+                className="h-9 px-4 rounded-lg bg-[color:var(--brand-teal)] hover:bg-[color:var(--brand-teal-hover)] text-white text-sm inline-flex items-center gap-2 transition-colors disabled:opacity-50"
+              >
+                {exporting ? <Loader2 className="animate-spin" size={14} /> : <FileSpreadsheet size={14} />}
+                {current ? 'Export this set' : 'Export all to Excel'}
+              </button>
+            )}
+          </>
+        }
       />
       <div className="p-6 lg:p-8">
         {loading ? <PageLoader /> : data.ads.length === 0 ? (

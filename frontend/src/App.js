@@ -7,6 +7,7 @@ import { PageLoader } from '@/components/Shared';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/pages/Login';
 import HomeRedirect from '@/pages/Home';
+import AdminDashboard from '@/pages/admin/Dashboard';
 import AdminUsersPage from '@/pages/admin/Users';
 import AdminAgenciesPage from '@/pages/admin/Agencies';
 import CreatorDashboard from '@/pages/creator/Dashboard';
@@ -44,6 +45,7 @@ function App() {
             <Route element={<Protected><AppShell /></Protected>}>
               <Route path="/" element={<HomeRedirect />} />
               {/* Admin */}
+              <Route path="/admin" element={<Protected roles={['admin']}><AdminDashboard /></Protected>} />
               <Route path="/admin/users" element={<Protected roles={['admin']}><AdminUsersPage /></Protected>} />
               <Route path="/admin/agencies" element={<Protected roles={['admin']}><AdminAgenciesPage /></Protected>} />
               {/* Creator */}

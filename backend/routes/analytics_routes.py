@@ -1,10 +1,64 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
-from database import ads_col, ad_sets_col, users_col, reviews_col, versions_col
-from auth import get_current_user
+from database import ads_col, ad_sets_col, users_col, reviews_col, versions_col, agencies_col
+from auth import get_current_user, require_roles
 from utils import seconds_between, humanize_seconds, parse_iso, now_iso
 
 router = APIRouter(prefix='/api/analytics', tags=['analytics'])
+
+# An ad only counts as "assigned" once it has actually reached the agency.
+# Agency selection happens at the ad set level, so every ad in an assigned set
+# carries assigned_agency_id — including ones still sitting in script review
+# that the agency cannot act on. Counting those would inflate the workload.
+REACHED_AGENCY = [
+    'assigned_agency', 'assigned_editor', 'pending_final_review',
+    'final_rejected', 'approved',
+]
+
+
+@router.get('/agencies')
+async def agency_performance(_admin=Depends(require_roles('admin'))):
+    """Per-agency workload: videos assigned, approved, and still outstanding."""
+    agencies = await agencies_col.find({}, {'_id': 0}).sort('name', 1).to_list(1000)
+
+    rows = await ads_col.aggregate([
+        {'$match': {'assigned_agency_id': {'$ne': None}, 'status': {'$in': REACHED_AGENCY}}},
+        {'$group': {
+            '_id': '$assigned_agency_id',
+            'assigned': {'$sum': 1},
+            'approved': {'$sum': {'$cond': [{'$eq': ['$status', 'approved']}, 1, 0]}},
+            'awaiting_final': {'$sum': {'$cond': [{'$eq': ['$status', 'pending_final_review']}, 1, 0]}},
+            'in_production': {'$sum': {'$cond': [
+                {'$in': ['$status', ['assigned_agency', 'assigned_editor', 'final_rejected']]}, 1, 0]}},
+        }},
+    ]).to_list(1000)
+    stats = {r['_id']: r for r in rows}
+
+    editor_rows = await users_col.aggregate([
+        {'$match': {'role': 'video_editor', 'active': True, 'agency_id': {'$ne': None}}},
+        {'$group': {'_id': '$agency_id', 'editors': {'$sum': 1}}},
+    ]).to_list(1000)
+    editors = {r['_id']: r['editors'] for r in editor_rows}
+
+    out = []
+    for a in agencies:
+        s = stats.get(a['id'], {})
+        assigned = s.get('assigned', 0)
+        approved = s.get('approved', 0)
+        out.append({
+            'agency_id': a['id'],
+            'agency_name': a['name'],
+            'videos_assigned': assigned,
+            'videos_approved': approved,
+            # per spec: assigned videos that are not yet approved
+            'pending_review': assigned - approved,
+            'awaiting_final_review': s.get('awaiting_final', 0),
+            'in_production': s.get('in_production', 0),
+            'editors': editors.get(a['id'], 0),
+            'approval_rate': round(approved / assigned * 100) if assigned else None,
+        })
+    out.sort(key=lambda r: (-r['videos_assigned'], r['agency_name']))
+    return out
 
 
 STAGE_ORDER = [

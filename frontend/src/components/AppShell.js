@@ -27,6 +27,7 @@ function navFor(role) {
     groups.push({
       label: 'Administration',
       items: [
+        { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/admin/users', label: 'Users', icon: Users },
         { to: '/admin/agencies', label: 'Agencies', icon: Building2 },
       ],

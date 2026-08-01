@@ -11,6 +11,7 @@ const SAMPLE_ACCOUNTS = [
   { label: 'Agency Admin (Pixel Studio)', email: 'agency-admin@pixel.studio', password: 'Agency@123' },
   { label: 'Video Editor (Pixel Studio)', email: 'editor@pixel.studio', password: 'Editor@123' },
   { label: 'Final Reviewer', email: 'final@marketing.studio', password: 'Final@123' },
+  { label: 'Ad Poster', email: 'poster@marketing.studio', password: 'Poster@123' },
 ];
 
 export default function LoginPage() {

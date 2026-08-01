@@ -11,7 +11,7 @@ ADMIN = require_roles('admin')
 
 VALID_ROLES = {
     'admin', 'creator', 'script_reviewer',
-    'agency_admin', 'video_editor', 'final_reviewer'
+    'agency_admin', 'video_editor', 'final_reviewer', 'ad_poster'
 }
 
 

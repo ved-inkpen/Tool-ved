@@ -20,6 +20,7 @@ import AgencyEditors from '@/pages/agency/Editors';
 import AgencyAdSetDetail from '@/pages/agency/AdSetDetail';
 import EditorDashboard from '@/pages/editor/Dashboard';
 import EditorAdDetail from '@/pages/editor/Detail';
+import AdPosterDashboard from '@/pages/poster/Dashboard';
 import FinalReviewQueue from '@/pages/final/Queue';
 import FinalReviewAdSet from '@/pages/final/AdSetDetail';
 import FinalReviewDetail from '@/pages/final/Detail';
@@ -68,6 +69,7 @@ function App() {
               <Route path="/final-review/sets/:id" element={<Protected roles={['final_reviewer', 'admin']}><FinalReviewAdSet /></Protected>} />
               <Route path="/final-review/ads/:id" element={<Protected roles={['final_reviewer', 'admin']}><FinalReviewDetail /></Protected>} />
               {/* Downloads */}
+              <Route path="/poster" element={<Protected roles={['ad_poster', 'admin']}><AdPosterDashboard /></Protected>} />
               <Route path="/downloads" element={<Protected roles={['admin', 'creator', 'script_reviewer', 'video_editor', 'final_reviewer']}><DownloadsPage /></Protected>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -232,7 +232,13 @@ async def final_review(ad_id: str, decision: FinalReviewDecision, user: dict = D
         raise HTTPException(status_code=400, detail=f"Ad not pending final review (current: {ad['status']})")
     now = now_iso()
     if decision.action == 'approve':
-        await ads_col.update_one({'id': ad_id}, {'$set': {'status': 'approved', 'latest_review_comment': decision.comments or None, 'updated_at': now}, '$push': {'state_history': state_entry('approved', user)}})
+        approved_fields = {'status': 'approved', 'latest_review_comment': decision.comments or None, 'updated_at': now}
+        # the ad poster needs these alongside the final asset
+        if decision.custom_listing_link is not None:
+            approved_fields['custom_listing_link'] = decision.custom_listing_link.strip()
+        if decision.deeplink is not None:
+            approved_fields['deeplink'] = decision.deeplink.strip()
+        await ads_col.update_one({'id': ad_id}, {'$set': approved_fields, '$push': {'state_history': state_entry('approved', user)}})
         await notify(ad['created_by'], 'Ad approved', f"Your ad '{ad['name']}' has been approved and is ready for download", f"/downloads")
         if ad.get('assigned_editor_id'):
             await notify(ad['assigned_editor_id'], 'Ad approved', f"Your work on '{ad['name']}' has been approved", f"/editor")

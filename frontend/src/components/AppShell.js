@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Search, Users, Building2, Video,
-  ClipboardCheck, CheckCircle2, Download, Menu, LogOut, ChevronDown, Sparkles, UsersRound
+  ClipboardCheck, CheckCircle2, Download, Menu, LogOut, ChevronDown, Sparkles, UsersRound, Megaphone
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -19,6 +19,7 @@ const ROLE_LABELS = {
   agency_admin: 'Agency Admin',
   video_editor: 'Video Editor',
   final_reviewer: 'Final Reviewer',
+  ad_poster: 'Ad Poster',
 };
 
 function navFor(role) {
@@ -74,9 +75,17 @@ function navFor(role) {
       ],
     });
   }
+  if (['ad_poster', 'admin'].includes(role)) {
+    groups.push({
+      label: 'Ad Posting',
+      items: [
+        { to: '/poster', label: 'Ready to Post', icon: Megaphone },
+      ],
+    });
+  }
   // Agency admins get approved/rejected videos per ad set instead of a
   // cross-campaign asset library, so Assets is not theirs.
-  if (role !== 'agency_admin') {
+  if (!['agency_admin', 'ad_poster'].includes(role)) {
     groups.push({
       label: 'Assets',
       items: [

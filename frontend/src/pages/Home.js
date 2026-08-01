@@ -10,6 +10,7 @@ const ROUTE_BY_ROLE = {
   agency_admin: '/agency',
   video_editor: '/editor',
   final_reviewer: '/final-review',
+  ad_poster: '/poster',
 };
 
 export default function HomeRedirect() {

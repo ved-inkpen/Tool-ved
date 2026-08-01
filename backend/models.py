@@ -19,6 +19,7 @@ ROLES = Literal[
     'agency_admin',
     'video_editor',
     'final_reviewer',
+    'ad_poster',
 ]
 
 AD_STATUS = Literal[
@@ -143,6 +144,9 @@ class Ad(BaseModel):
     media_file: Optional[FileRef] = None
     # editor's uploaded media that has not been submitted for final review yet
     draft_media_file: Optional[FileRef] = None
+    # captured by the final reviewer at approval, consumed by the ad poster
+    custom_listing_link: str = ''
+    deeplink: str = ''
     headlines: List[str] = []
     primary_texts: List[str] = []
     # legacy single fields (backward compat) — mirror the first array entry
@@ -216,6 +220,9 @@ class EditorSubmitInput(BaseModel):
 class FinalReviewDecision(BaseModel):
     action: Literal['approve', 'reject']
     comments: Optional[str] = ''
+    # only meaningful on approve; handed to the ad poster with the final asset
+    custom_listing_link: Optional[str] = None
+    deeplink: Optional[str] = None
 
 
 # ---------- Review / Version records ----------

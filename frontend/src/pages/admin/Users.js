@@ -13,6 +13,7 @@ import {
 const ROLES = [
   { value: 'creator', label: 'Creator' },
   { value: 'script_reviewer', label: 'Script Reviewer' },
+  { value: 'ad_poster', label: 'Ad Poster' },
   { value: 'agency_admin', label: 'Agency Admin' },
   { value: 'video_editor', label: 'Video Editor' },
   { value: 'final_reviewer', label: 'Final Reviewer' },

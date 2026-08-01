@@ -72,6 +72,7 @@ SEED_USERS = [
     ('agency-admin@pixel.studio', 'Agency@123', 'Alex AgencyAdmin', 'agency_admin', 'Pixel Studio'),
     ('editor@pixel.studio', 'Editor@123', 'Eddie Editor', 'video_editor', 'Pixel Studio'),
     ('final@marketing.studio', 'Final@123', 'Fiona Finalist', 'final_reviewer', None),
+    ('poster@marketing.studio', 'Poster@123', 'Pooja Poster', 'ad_poster', None),
 ]
 
 

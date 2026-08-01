@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Search, Users, Building2, Video,
   ClipboardCheck, CheckCircle2, Download, Menu, LogOut, ChevronDown, Sparkles, UsersRound
@@ -89,6 +89,15 @@ function navFor(role) {
 
 function Sidebar({ user, onNavigate }) {
   const groups = navFor(user?.role);
+  const { pathname } = useLocation();
+  // NavLink's default matching treats a parent path as active for all its
+  // children, so /admin would light up alongside /admin/users. Highlight only
+  // the most specific nav item that matches, and let deeper routes such as
+  // /agency/ad-sets/:id still light up their section.
+  const activePath = groups
+    .flatMap(g => g.items.map(i => i.to))
+    .filter(to => pathname === to || pathname.startsWith(`${to}/`))
+    .sort((a, b) => b.length - a.length)[0];
   return (
     <aside className="h-full w-full lg:w-[264px] shrink-0 border-r border-[color:var(--stroke)] bg-[color:var(--bg-1)] flex flex-col" data-testid="app-sidebar">
       <div className="px-5 py-5 flex items-center gap-2 border-b border-[color:var(--stroke)]">
@@ -109,13 +118,14 @@ function Sidebar({ user, onNavigate }) {
             <ul className="space-y-1">
               {g.items.map((it) => (
                 <li key={it.to}>
-                  <NavLink
+                  <Link
                     to={it.to}
                     onClick={onNavigate}
                     data-testid={`nav-${it.to.replace(/\//g, '-')}`}
-                    className={({ isActive }) =>
+                    aria-current={activePath === it.to ? 'page' : undefined}
+                    className={
                       `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                        isActive
+                        activePath === it.to
                           ? 'bg-[color:var(--bg-2)] text-white border border-[color:var(--stroke)]'
                           : 'text-[color:var(--text-2)] hover:bg-white/[0.03] hover:text-white border border-transparent'
                       }`
@@ -123,7 +133,7 @@ function Sidebar({ user, onNavigate }) {
                   >
                     <it.icon size={16} />
                     <span>{it.label}</span>
-                  </NavLink>
+                  </Link>
                 </li>
               ))}
             </ul>

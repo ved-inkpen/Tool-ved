@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import Lottie from 'lottie-react';
+import rocketLaunch from '@/assets/rocket-launch.json';
+import { Aurora } from '@/components/Aurora';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,28 +43,35 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-[color:var(--bg-0)]">
       <div className="hidden lg:flex flex-col justify-between p-10 relative overflow-hidden grain-overlay"
-           style={{ background: 'radial-gradient(1000px 500px at -10% -10%, rgba(20,184,166,0.18), transparent 60%), radial-gradient(600px 400px at 120% 110%, rgba(34,211,238,0.12), transparent 60%), var(--bg-1)' }}>
-        <div className="flex items-center gap-2">
+           style={{ background: 'var(--bg-1)' }}>
+        <Aurora />
+        <div className="relative flex items-center gap-2">
           <div className="h-10 w-10 rounded-xl grid place-items-center bg-gradient-to-br from-[var(--brand-teal)] to-[#0EA5B5] text-white"><Sparkles size={18} /></div>
-          <div className="font-semibold text-lg" style={{ fontFamily: 'var(--font-display)' }}>Marketing Studio</div>
+          <div className="font-semibold text-lg" style={{ fontFamily: 'var(--font-display)' }}>Marco</div>
         </div>
-        <div className="max-w-md">
-          <div className="text-[11px] uppercase tracking-widest text-[color:var(--text-3)] mb-3" style={{ fontFamily: 'var(--font-mono)' }}>Ops console</div>
+        <div className="relative max-w-md">
+          <Lottie
+            animationData={rocketLaunch}
+            loop
+            className="w-56 h-56 -ml-4 -mb-2"
+            aria-hidden="true"
+            data-testid="rocket-lottie"
+          />
           <h1 className="text-4xl font-semibold leading-tight mb-3" style={{ fontFamily: 'var(--font-display)' }}>
-            One workspace for scripts, agencies, edits and approvals.
+            Giving escape velocity to our rocketship
           </h1>
           <p className="text-sm text-[color:var(--text-3)]">
             Replace spreadsheets with a fast, dark-themed studio control room. Track every ad from script to approved asset with clear ownership across teams and agencies.
           </p>
         </div>
-        <div className="text-[11px] text-[color:var(--text-3)]" style={{ fontFamily: 'var(--font-mono)' }}>v1.0 · Studio Ops</div>
+        <div className="relative text-[11px] text-[color:var(--text-3)]" style={{ fontFamily: 'var(--font-mono)' }}>v1.0 · Studio Ops</div>
       </div>
 
       <div className="flex items-center justify-center p-6 lg:p-10">
         <div className="w-full max-w-md card-elevated p-8">
           <div className="lg:hidden flex items-center gap-2 mb-6">
             <div className="h-9 w-9 rounded-xl grid place-items-center bg-gradient-to-br from-[var(--brand-teal)] to-[#0EA5B5] text-white"><Sparkles size={16} /></div>
-            <div className="font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Marketing Studio</div>
+            <div className="font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Marco</div>
           </div>
           <h2 className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Sign in</h2>
           <p className="text-sm text-[color:var(--text-3)] mt-1">Use your work account to access your role dashboard.</p>

@@ -117,3 +117,74 @@ code { font-family: var(--font-mono); }
     border-left-color: inherit; border-right-color: inherit; border-top-color: inherit; border-bottom-color: inherit;
   }
 }
+
+/* ---------- Sign-in aurora ----------------------------------------------
+   Drifting colour blobs plus a cursor-tracking highlight. Animates transform
+   and opacity only; the cursor layer reads --mx/--my set from a rAF loop. */
+.aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  --mx: 50%;
+  --my: 50%;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.72;
+  will-change: transform;
+}
+
+.aurora-blob-a {
+  width: 46rem; height: 46rem; top: -18rem; left: -14rem;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.85), transparent 68%);
+  animation: aurora-drift-a 22s ease-in-out infinite;
+}
+
+.aurora-blob-b {
+  width: 38rem; height: 38rem; bottom: -16rem; right: -12rem;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.62), transparent 68%);
+  animation: aurora-drift-b 28s ease-in-out infinite;
+}
+
+.aurora-blob-c {
+  width: 30rem; height: 30rem; top: 38%; left: 30%;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.45), transparent 68%);
+  animation: aurora-drift-c 34s ease-in-out infinite;
+}
+
+/* follows the pointer with a slight lag */
+.aurora-cursor {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    28rem 28rem at var(--mx) var(--my),
+    rgba(45, 212, 191, 0.30),
+    rgba(45, 212, 191, 0.10) 35%,
+    transparent 65%
+  );
+  transition: opacity 400ms ease;
+}
+
+@keyframes aurora-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(8%, 6%, 0) scale(1.15); }
+}
+@keyframes aurora-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%      { transform: translate3d(-9%, -7%, 0) scale(0.92); }
+}
+@keyframes aurora-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  33%      { transform: translate3d(10%, -8%, 0) scale(1.1); }
+  66%      { transform: translate3d(-7%, 7%, 0) scale(1); }
+}
+
+/* Motion is decoration here — hold everything still when asked. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob { animation: none; }
+  .aurora-cursor { display: none; }
+}

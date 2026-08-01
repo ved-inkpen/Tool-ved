@@ -47,6 +47,7 @@ export function CommentThread({ adId }) {
   const [busy, setBusy] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [replyText, setReplyText] = useState('');
+  const [isQuestion, setIsQuestion] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,8 +63,9 @@ export function CommentThread({ adId }) {
     if (!text.trim()) return;
     setBusy(true);
     try {
-      await api.post(`/ads/${adId}/comments`, { text: text.trim() });
+      await api.post(`/ads/${adId}/comments`, { text: text.trim(), is_question: isQuestion });
       setText('');
+      setIsQuestion(false);
       await load();
     } catch (e) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setBusy(false); }
   };
@@ -96,14 +98,28 @@ export function CommentThread({ adId }) {
       </div>
       <div className="card-elevated p-4 space-y-4">
         <div className="flex gap-2">
+          <div className="flex-1">
           <textarea
             data-testid="comment-thread-input"
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={2}
             placeholder="Add a comment…"
-            className="flex-1 rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] p-2 text-sm"
+            className="w-full rounded-lg bg-[color:var(--bg-2)] border border-[color:var(--stroke)] p-2 text-sm"
           />
+          <label className="mt-2 inline-flex items-start gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              data-testid="comment-is-question"
+              checked={isQuestion}
+              onChange={(e) => setIsQuestion(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-[color:var(--brand-teal)] cursor-pointer"
+            />
+            <span className="text-[11px] text-[color:var(--text-3)] group-hover:text-[color:var(--text-2)] transition-colors">
+              This is a question — notify a studio admin
+            </span>
+          </label>
+          </div>
           <button
             data-testid="comment-thread-submit"
             onClick={submitTop}

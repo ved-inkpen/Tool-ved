@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
-from database import ads_col, ad_sets_col, users_col, comments_col
+from database import ads_col, ad_sets_col, users_col, comments_col, agencies_col
 from auth import get_current_user
 from utils import new_id, now_iso, clean_doc
-from notifications import notify
+from notifications import notify, notify_role
 
 router = APIRouter(prefix='/api/ads', tags=['comments'])
 
@@ -42,6 +42,36 @@ async def _notify_participants(ad: dict, actor: dict, comment_text: str):
         await notify(uid, f"New comment on '{ad.get('name')}'", f"{actor.get('name')}: {preview}", f"/ad-sets/{ad['ad_set_id']}")
 
 
+async def _notify_admins_of_question(ad: dict, actor: dict, comment: dict):
+    """Raise a question to the studio admins so queries do not stall a review.
+
+    The notification carries everything the admin list needs so it can render
+    without re-reading the ad, the agency or the author.
+    """
+    agency_name = None
+    if ad.get('assigned_agency_id'):
+        ag = await agencies_col.find_one({'id': ad['assigned_agency_id']}, {'_id': 0, 'name': 1})
+        agency_name = ag['name'] if ag else None
+    text = comment['text']
+    preview = text[:100] + ('…' if len(text) > 100 else '')
+    await notify_role(
+        'admin',
+        f"Question on '{ad.get('name')}'",
+        f"{actor.get('name')}: {preview}",
+        f"/ad-sets/{ad['ad_set_id']}",
+        kind='comment_question',
+        comment_id=comment['id'],
+        ad_id=ad['id'],
+        ad_name=ad.get('name'),
+        ad_code=ad.get('ad_code'),
+        ad_set_id=ad.get('ad_set_id'),
+        agency_name=agency_name,
+        author_name=actor.get('name'),
+        author_role=actor.get('role'),
+        preview=preview,
+    )
+
+
 @router.get('/{ad_id}/comments')
 async def list_comments(ad_id: str, user: dict = Depends(get_current_user)):
     ad = await ads_col.find_one({'id': ad_id}, {'_id': 0})
@@ -57,6 +87,7 @@ async def list_comments(ad_id: str, user: dict = Depends(get_current_user)):
 async def create_comment(ad_id: str, payload: dict, user: dict = Depends(get_current_user)):
     text = (payload or {}).get('text', '').strip()
     parent_id = (payload or {}).get('parent_id')
+    is_question = bool((payload or {}).get('is_question'))
     if not text:
         raise HTTPException(status_code=400, detail='Comment text is required')
     if len(text) > 4000:
@@ -79,12 +110,15 @@ async def create_comment(ad_id: str, payload: dict, user: dict = Depends(get_cur
         'author_role': user.get('role'),
         'text': text,
         'parent_id': parent_id,
+        'is_question': is_question,
         'created_at': now_iso(),
     }
     await comments_col.insert_one(doc)
     # notify participants
     try:
         await _notify_participants(ad, user, text)
+        if is_question:
+            await _notify_admins_of_question(ad, user, doc)
     except Exception:
         pass
     return clean_doc(doc)

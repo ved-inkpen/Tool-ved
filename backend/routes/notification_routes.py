@@ -7,9 +7,16 @@ router = APIRouter(prefix='/api/notifications', tags=['notifications'])
 
 
 @router.get('')
-async def list_notifications(user: dict = Depends(get_current_user)):
-    docs = await notifications_col.find({'user_id': user['id']}, {'_id': 0}).sort('created_at', -1).limit(100).to_list(100)
-    unread = await notifications_col.count_documents({'user_id': user['id'], 'read': False})
+async def list_notifications(kind: str = None, unread_only: bool = False, user: dict = Depends(get_current_user)):
+    """Notifications for the caller. `kind` narrows to one type, e.g. the
+    comment questions the admin dashboard lists."""
+    query = {'user_id': user['id']}
+    if kind:
+        query['kind'] = kind
+    if unread_only:
+        query['read'] = False
+    docs = await notifications_col.find(query, {'_id': 0}).sort('created_at', -1).limit(200).to_list(200)
+    unread = await notifications_col.count_documents({**query, 'read': False})
     return {'notifications': docs, 'unread': unread}
 
 

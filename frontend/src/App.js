@@ -68,7 +68,7 @@ function App() {
               <Route path="/final-review/sets/:id" element={<Protected roles={['final_reviewer', 'admin']}><FinalReviewAdSet /></Protected>} />
               <Route path="/final-review/ads/:id" element={<Protected roles={['final_reviewer', 'admin']}><FinalReviewDetail /></Protected>} />
               {/* Downloads */}
-              <Route path="/downloads" element={<DownloadsPage />} />
+              <Route path="/downloads" element={<Protected roles={['admin', 'creator', 'script_reviewer', 'video_editor', 'final_reviewer']}><DownloadsPage /></Protected>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

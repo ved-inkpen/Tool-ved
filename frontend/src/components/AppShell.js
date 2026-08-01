@@ -74,12 +74,16 @@ function navFor(role) {
       ],
     });
   }
-  groups.push({
-    label: 'Assets',
-    items: [
-      { to: '/downloads', label: 'Approved Downloads', icon: Download },
-    ],
-  });
+  // Agency admins get approved/rejected videos per ad set instead of a
+  // cross-campaign asset library, so Assets is not theirs.
+  if (role !== 'agency_admin') {
+    groups.push({
+      label: 'Assets',
+      items: [
+        { to: '/downloads', label: 'Approved Downloads', icon: Download },
+      ],
+    });
+  }
   return groups;
 }
 

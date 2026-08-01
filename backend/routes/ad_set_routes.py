@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
-from database import ad_sets_col, ads_col, users_col, agencies_col
+from database import ad_sets_col, ads_col, users_col, agencies_col, reviews_col
 from auth import get_current_user, require_roles
 from models import AdSetCreate, AdInput, AgencySetAssignInput
 from utils import clean_doc, new_id, now_iso, gen_code, state_entry, normalize_ad
@@ -264,6 +264,16 @@ async def get_ad_set(ad_set_id: str, user: dict = Depends(get_current_user)):
     if role == 'video_editor':
         ads = [a for a in ads if a.get('assigned_editor_id') == user['id']]
     ads = [normalize_ad(a) for a in ads]
+    # attach each ad's most recent review so callers can show who decided and when
+    if ads:
+        revs = await reviews_col.find(
+            {'ad_id': {'$in': [a['id'] for a in ads]}}, {'_id': 0}
+        ).sort('created_at', -1).to_list(5000)
+        latest = {}
+        for r in revs:
+            latest.setdefault(r['ad_id'], r)
+        for a in ads:
+            a['latest_review'] = latest.get(a['id'])
     # Attach agency name
     agency_name = None
     if ad_set.get('assigned_agency_id'):

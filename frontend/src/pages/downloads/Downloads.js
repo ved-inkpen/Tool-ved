@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { api, fileUrl, downloadUrl } from '@/lib/api';
 import { PageHeader, PageLoader, EmptyState } from '@/components/Shared';
-import { Download, Copy, PlayCircle } from 'lucide-react';
+import { Download, Copy, PlayCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { MediaPreview } from '@/components/MediaPreview';
 import { adHeadlines, adPrimaryTexts } from '@/components/AdCopy';
@@ -51,6 +52,7 @@ export default function DownloadsPage() {
   const [data, setData] = useState({ ads: [], ad_sets: [] });
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState(null);
+  const [selectedSetId, setSelectedSetId] = useState(null);
 
   useEffect(() => { (async () => {
     setLoading(true);
@@ -62,15 +64,59 @@ export default function DownloadsPage() {
     catch (e) { toast.error('Copy failed'); }
   };
 
+  // approved ads grouped under the ad set they belong to
+  const groups = data.ad_sets
+    .map(s => ({ set: s, ads: data.ads.filter(a => a.ad_set_id === s.id) }))
+    .filter(g => g.ads.length > 0)
+    .sort((a, b) => new Date(b.set.updated_at || 0) - new Date(a.set.updated_at || 0));
+  const current = groups.find(g => g.set.id === selectedSetId);
+  const visibleAds = current ? current.ads : [];
+
   return (
     <div>
-      <PageHeader title="Approved downloads" subtitle="Download final approved media with every headline and primary text variant ready for publishing." />
+      <PageHeader
+        title={current ? current.set.name : 'Approved downloads'}
+        subtitle={current
+          ? `${current.ads.length} approved ad${current.ads.length === 1 ? '' : 's'} ready to publish`
+          : 'Pick an ad set to grab its approved media and copy.'}
+        breadcrumbs={current ? 'Approved Downloads' : undefined}
+        actions={current && (
+          <button data-testid="downloads-back" onClick={() => setSelectedSetId(null)} className="h-9 px-3 rounded-lg hover:bg-white/5 text-sm text-[color:var(--text-2)] inline-flex items-center gap-2 transition-colors">
+            <ArrowLeft size={14} /> All ad sets
+          </button>
+        )}
+      />
       <div className="p-6 lg:p-8">
         {loading ? <PageLoader /> : data.ads.length === 0 ? (
           <EmptyState title="No approved ads yet" description="Approved ads will appear here as soon as final review is done." />
+        ) : !current ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {groups.map(({ set, ads }) => (
+              <button
+                key={set.id}
+                data-testid={`downloads-adset-card-${set.id}`}
+                onClick={() => setSelectedSetId(set.id)}
+                className="text-left card-elevated p-5 hover:border-[color:var(--brand-teal)]/40 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate" style={{ fontFamily: 'var(--font-display)' }}>{set.name}</div>
+                    <div className="text-[11px] text-[color:var(--text-3)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>{set.ad_set_code}</div>
+                  </div>
+                  <div className="h-9 w-9 shrink-0 rounded-lg bg-[color:#D7FF9A]/10 grid place-items-center text-[color:#D7FF9A]">
+                    <Download size={15} />
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-[color:var(--stroke)] flex items-center justify-between text-[11px] text-[color:var(--text-3)]">
+                  <span className="text-[color:#D7FF9A]">{ads.length} approved ad{ads.length === 1 ? '' : 's'}</span>
+                  <span>{set.updated_at ? formatDistanceToNow(new Date(set.updated_at), { addSuffix: true }) : ''}</span>
+                </div>
+              </button>
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {data.ads.map(a => {
+            {visibleAds.map(a => {
               const set = data.ad_sets.find(s => s.id === a.ad_set_id);
               const media = a.media_file;
               return (

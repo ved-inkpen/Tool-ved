@@ -84,6 +84,10 @@ class AgencyEditorUpdate(BaseModel):
     password: Optional[str] = None
 
 
+class SlackConnect(BaseModel):
+    webhook_url: str
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str

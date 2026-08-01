@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Search, Users, Building2, Video,
-  ClipboardCheck, CheckCircle2, Download, Menu, LogOut, ChevronDown, Sparkles, UsersRound, Megaphone
+  ClipboardCheck, CheckCircle2, Download, Menu, LogOut, ChevronDown, Sparkles, UsersRound, Megaphone, Settings as SettingsIcon
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationCenter } from '@/components/NotificationCenter';
@@ -194,6 +194,9 @@ export default function AppShell() {
             <DropdownMenuContent align="end" className="w-56 bg-[color:var(--bg-1)] border-[color:var(--stroke)] text-[color:var(--text-1)]">
               <DropdownMenuLabel className="text-xs text-[color:var(--text-3)]">{user?.email}</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-[color:var(--stroke)]" />
+              <DropdownMenuItem data-testid="topbar-settings-menu-item" onClick={() => navigate('/settings')} className="text-sm cursor-pointer focus:bg-white/5">
+                <SettingsIcon size={14} className="mr-2" /> Settings
+              </DropdownMenuItem>
               <DropdownMenuItem data-testid="topbar-logout-menu-item" onClick={logout} className="text-sm cursor-pointer focus:bg-white/5">
                 <LogOut size={14} className="mr-2" /> Sign out
               </DropdownMenuItem>

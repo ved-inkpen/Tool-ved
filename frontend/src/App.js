@@ -7,6 +7,7 @@ import { PageLoader } from '@/components/Shared';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/pages/Login';
 import HomeRedirect from '@/pages/Home';
+import SettingsPage from '@/pages/Settings';
 import AdminDashboard from '@/pages/admin/Dashboard';
 import AdminUsersPage from '@/pages/admin/Users';
 import AdminAgenciesPage from '@/pages/admin/Agencies';
@@ -45,6 +46,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<Protected><AppShell /></Protected>}>
               <Route path="/" element={<HomeRedirect />} />
+              {/* per-user settings, available to every signed-in role */}
+              <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
               {/* Admin */}
               <Route path="/admin" element={<Protected roles={['admin']}><AdminDashboard /></Protected>} />
               <Route path="/admin/users" element={<Protected roles={['admin']}><AdminUsersPage /></Protected>} />

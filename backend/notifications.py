@@ -1,6 +1,7 @@
 from typing import List, Optional
 from database import notifications_col, users_col
 from utils import new_id, now_iso
+import slack
 
 
 async def notify(user_id: str, title: str, message: str, link: Optional[str] = None, **extra):
@@ -20,6 +21,11 @@ async def notify(user_id: str, title: str, message: str, link: Optional[str] = N
         **extra,
     }
     await notifications_col.insert_one(doc)
+    # mirror to Slack if connected; never let that failure reach the caller
+    try:
+        await slack.deliver(user_id, title, message, link)
+    except Exception:
+        pass
     return doc
 
 
